@@ -27,7 +27,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
   bool _obscure = true;
 
-  static const Color baseColor = Color(0xFFFF8A6B);
+  static const Color baseColor = Color(0xFFE56B4C);
 
   @override
   void dispose() {
@@ -184,7 +184,7 @@ class _RegisterPageState extends State<RegisterPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFFF0EB), baseColor],
+            colors: [Color(0xFFFBE6DF), baseColor],
           ),
         ),
         child: SafeArea(

@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
 
   // Color base un poco más fuerte que el anterior (#FFB6A3)
-  static const Color baseColor = Color(0xFFFF8A6B); // tono coral más intenso
+  static const Color baseColor = Color(0xFFE56B4C); // tono coral más oscuro
 
   @override
   void dispose() {
@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFFFFF0EB), baseColor],
+            colors: [const Color(0xFFFBE6DF), baseColor],
           ),
         ),
         child: SafeArea(
