@@ -67,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.14),
+                            color: Colors.white24,
                           ),
                           child: const Icon(Icons.local_hospital_rounded, size: 40, color: Colors.white),
                         ),
@@ -83,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 20),
 
-                    Text('Inicia sesión para continuar', style: TextStyle(color: Colors.white.withOpacity(0.95))),
+                    Text('Inicia sesión para continuar', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 20),
 
                     Form(
@@ -98,10 +98,10 @@ class _LoginPageState extends State<LoginPage> {
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.18), // más opaco para verse mejor
+                              fillColor: Colors.white24, // más opaco para verse mejor
                               hintText: 'tucorreo@ejemplo.com',
-                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.85)),
-                              prefixIcon: Icon(Icons.email_outlined, color: Colors.white.withOpacity(0.9)),
+                              hintStyle: const TextStyle(color: Colors.white70),
+                              prefixIcon: const Icon(Icons.email_outlined, color: Colors.white),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                             ),
@@ -121,12 +121,12 @@ class _LoginPageState extends State<LoginPage> {
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.18),
+                              fillColor: Colors.white24,
                               hintText: 'Contraseña',
-                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.85)),
-                              prefixIcon: Icon(Icons.lock_outline, color: Colors.white.withOpacity(0.9)),
+                              hintStyle: const TextStyle(color: Colors.white70),
+                              prefixIcon: const Icon(Icons.lock_outline, color: Colors.white),
                               suffixIcon: IconButton(
-                                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: Colors.white.withOpacity(0.9)),
+                                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: Colors.white),
                                 onPressed: () => setState(() => _obscure = !_obscure),
                               ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -163,7 +163,7 @@ class _LoginPageState extends State<LoginPage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('¿No tienes cuenta?', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                              Text('¿No tienes cuenta?', style: TextStyle(color: Colors.white70)),
                               TextButton(
                                 onPressed: () {
                                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterPage()));
