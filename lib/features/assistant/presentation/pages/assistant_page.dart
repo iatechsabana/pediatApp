@@ -114,7 +114,7 @@ class _AssistantPageState extends State<AssistantPage> {
                   }),
                   const SizedBox(width: AppDimens.paddingMedium),
                   if (_apiKey != null && _apiKey!.isNotEmpty)
-                    Expanded(child: Text('API: ****' + (_apiKey!.length > 4 ? _apiKey!.substring(_apiKey!.length - 4) : _apiKey!), style: const TextStyle(color: AppColors.textBlack54))),
+                    Expanded(child: Text('API: ****${_apiKey!.length > 4 ? _apiKey!.substring(_apiKey!.length - 4) : _apiKey!}', style: const TextStyle(color: AppColors.textBlack54))),
                   IconButton(
                     onPressed: () async {
                       final key = await _askForApiKey();

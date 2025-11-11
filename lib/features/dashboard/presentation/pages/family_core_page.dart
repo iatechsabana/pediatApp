@@ -64,31 +64,35 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
       final child = _children[i];
       widgets.add(Card(
         margin: const EdgeInsets.only(bottom: AppDimens.paddingSmall),
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimens.paddingSmall),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ExpansionTile(
+          key: ValueKey(i),
+          title: Row(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Hijo ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                  IconButton(onPressed: () => _removeChild(i), icon: const Icon(Icons.delete_outline)),
-                ],
-              ),
-              TextFormField(controller: child.nameController, decoration: const InputDecoration(labelText: 'Nombre del hijo')),
-              const SizedBox(height: AppDimens.paddingSmall),
-              // Use a read-only field with a DatePicker for the child's date of birth
-              TextFormField(
-                controller: child.ageController,
-                decoration: const InputDecoration(labelText: 'Fecha de nacimiento'),
-                readOnly: true,
-                onTap: () => _pickChildDob(i),
-              ),
-              const SizedBox(height: AppDimens.paddingSmall),
-              TextFormField(controller: child.notesController, decoration: const InputDecoration(labelText: 'Antecedentes del hijo (alergias, condiciones)'), maxLines: 2),
+              Expanded(child: Text(child.nameController.text.isEmpty ? 'Hijo ${i + 1}' : child.nameController.text, style: const TextStyle(fontWeight: FontWeight.w700))),
             ],
           ),
+          // place delete button in trailing area
+          trailing: IconButton(onPressed: () => _removeChild(i), icon: const Icon(Icons.delete_outline)),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppDimens.paddingSmall),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(controller: child.nameController, decoration: const InputDecoration(labelText: 'Nombre del hijo')),
+                  const SizedBox(height: AppDimens.paddingSmall),
+                  TextFormField(
+                    controller: child.ageController,
+                    decoration: const InputDecoration(labelText: 'Fecha de nacimiento'),
+                    readOnly: true,
+                    onTap: () => _pickChildDob(i),
+                  ),
+                  const SizedBox(height: AppDimens.paddingSmall),
+                  TextFormField(controller: child.notesController, decoration: const InputDecoration(labelText: 'Antecedentes del hijo (alergias, condiciones)'), maxLines: 2),
+                ],
+              ),
+            ),
+          ],
         ),
       ));
     }
