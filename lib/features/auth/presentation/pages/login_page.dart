@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'register_page.dart';
+import '../../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_dimens.dart';
+import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/constants/app_config.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,9 +20,6 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscure = true;
 
-  // Color base un poco más fuerte que el anterior (#FFB6A3)
-  static const Color baseColor = Color(0xFFE56B4C); // tono coral más oscuro
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -28,10 +30,12 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(AppConfig.simulatedLoadDelay);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login simulado exitosamente')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Login simulado exitosamente'), duration: AppConfig.snackbarDuration));
     setState(() => _isLoading = false);
+    // Navigate to dashboard
+    if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardPage()));
   }
 
   @override
@@ -42,20 +46,19 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        // No const here because usamos métodos (withOpacity) en tiempo de ejecución
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFFFBE6DF), baseColor],
+            colors: [AppColors.primaryLight, AppColors.primary],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingXXLarge, vertical: AppDimens.paddingHuge),
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: mq.width > 700 ? 700 : mq.width),
+                constraints: BoxConstraints(maxWidth: mq.width > AppDimens.maxContentWidth ? AppDimens.maxContentWidth : mq.width),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,27 +67,27 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
+                          padding: const EdgeInsets.all(AppDimens.paddingSmall),
+                          decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white24,
+                            color: AppColors.inputFill,
                           ),
-                          child: const Icon(Icons.local_hospital_rounded, size: 40, color: Colors.white),
+                          child: const Icon(Icons.local_hospital_rounded, size: AppDimens.iconSizeXLarge, color: AppColors.inputIcon),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppDimens.paddingMedium),
                         const Expanded(
                           child: Text(
                             'Bienvenido de nuevo',
-                            style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800),
+                            style: AppTextStyles.heading2White,
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppDimens.paddingXLarge),
 
-                    Text('Inicia sesión para continuar', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 20),
+                    Text('Inicia sesión para continuar', style: AppTextStyles.subtitle2White),
+                    const SizedBox(height: AppDimens.paddingXLarge),
 
                     Form(
                       key: _formKey,
@@ -95,15 +98,15 @@ class _LoginPageState extends State<LoginPage> {
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            style: const TextStyle(color: Colors.white),
+                            style: AppTextStyles.formFieldText,
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white24, // más opaco para verse mejor
+                              fillColor: AppColors.inputFill,
                               hintText: 'tucorreo@ejemplo.com',
-                              hintStyle: const TextStyle(color: Colors.white70),
-                              prefixIcon: const Icon(Icons.email_outlined, color: Colors.white),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              hintStyle: AppTextStyles.formFieldHint,
+                              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.inputIcon),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingLarge, vertical: AppDimens.verticalPadding),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'Ingresa tu email';
@@ -112,63 +115,63 @@ class _LoginPageState extends State<LoginPage> {
                             },
                           ),
 
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppDimens.paddingMedium),
 
                           // Password
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscure,
-                            style: const TextStyle(color: Colors.white),
+                            style: AppTextStyles.formFieldText,
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white24,
+                              fillColor: AppColors.inputFill,
                               hintText: 'Contraseña',
-                              hintStyle: const TextStyle(color: Colors.white70),
-                              prefixIcon: const Icon(Icons.lock_outline, color: Colors.white),
+                              hintStyle: AppTextStyles.formFieldHint,
+                              prefixIcon: const Icon(Icons.lock_outline, color: AppColors.inputIcon),
                               suffixIcon: IconButton(
-                                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: Colors.white),
+                                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: AppColors.inputIcon),
                                 onPressed: () => setState(() => _obscure = !_obscure),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingLarge, vertical: AppDimens.verticalPadding),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
-                              if (v.length < 6) return 'Mínimo 6 caracteres';
+                              if (v.length < AppConfig.minPasswordLength) return 'Mínimo ${AppConfig.minPasswordLength} caracteres';
                               return null;
                             },
                           ),
 
-                          const SizedBox(height: 18),
+                          const SizedBox(height: AppDimens.paddingXLarge),
 
                           // Botón
                           SizedBox(
-                            height: 56,
+                            height: AppDimens.buttonHeight,
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: baseColor,
-                                elevation: 6,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                backgroundColor: AppColors.textWhite,
+                                foregroundColor: AppColors.primary,
+                                elevation: AppDimens.elevationLarge,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
                               ),
                               child: _isLoading
-                                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: baseColor, strokeWidth: 2))
-                                  : const Text('Iniciar sesión', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+                                  : const Text('Iniciar sesión', style: AppTextStyles.buttonText),
                             ),
                           ),
 
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppDimens.paddingMedium),
 
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('¿No tienes cuenta?', style: TextStyle(color: Colors.white70)),
+                              Text('¿No tienes cuenta?', style: AppTextStyles.subtitle2White),
                               TextButton(
                                 onPressed: () {
                                   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterPage()));
                                 },
-                                child: const Text('Regístrate', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                                child: const Text('Regístrate', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textWhite)),
                               ),
                             ],
                           ),

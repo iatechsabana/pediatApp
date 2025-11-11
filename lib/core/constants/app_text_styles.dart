@@ -1,21 +1,135 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
+/// Centralized text styles for the app
 class AppTextStyles {
-  static const headline1 = TextStyle(
+  // Headings
+  static const heading1 = TextStyle(
     fontSize: 32,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w800,
+    color: AppColors.text,
   );
-  
-  static const headline2 = TextStyle(
+
+  static const heading2 = TextStyle(
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    color: AppColors.text,
+  );
+
+  static const heading3 = TextStyle(
     fontSize: 24,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w700,
+    color: AppColors.text,
   );
-  
+
+  // White headings (for dark backgrounds)
+  static const heading2White = TextStyle(
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    color: AppColors.textWhite,
+  );
+
+  static const heading3White = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
+    color: AppColors.textWhite,
+  );
+
+  // Body text
   static const body1 = TextStyle(
     fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.text,
   );
-  
+
   static const body2 = TextStyle(
     fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.text,
+  );
+
+  static const bodySmall = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: AppColors.text,
+  );
+
+  // White body text (for dark backgrounds)
+  static const body1White = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textWhite,
+  );
+
+  static const body2White = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textWhite,
+  );
+
+  // Secondary/muted text
+  static const subtitle1 = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textWhite,
+  );
+
+  static const subtitle2 = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textWhite,
+  );
+
+  // White secondary text
+  static const subtitle1White = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.inputHint,
+  );
+
+  static const subtitle2White = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: AppColors.inputHint,
+  );
+
+  // Button text
+  static const buttonText = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    // Use primary blue for text on white buttons so the label stands out
+    color: AppColors.primary,
+  );
+
+  static const buttonTextWhite = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textWhite,
+  );
+
+  // Caption/hint text
+  static const caption = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textWhiteSecondary,
+  );
+
+  static const captionWhite = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inputHint,
+  );
+
+  // Form field text
+  static const formFieldText = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textWhite,
+  );
+
+  static const formFieldHint = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inputHint,
   );
 }

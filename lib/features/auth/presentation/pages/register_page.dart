@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_dimens.dart';
+import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/constants/app_config.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -27,8 +31,6 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
   bool _obscure = true;
 
-  static const Color baseColor = Color(0xFFE56B4C);
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -46,7 +48,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(AppConfig.simulatedSubmitDelay);
 
     final data = {
       'type': _accountType == AccountType.user ? 'Usuario' : 'Pediatra',
@@ -69,7 +71,7 @@ class _RegisterPageState extends State<RegisterPage> {
     // For now show a summary SnackBar. In production you'd send this to backend.
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Registro simulado: ${data['type']} - ${data['email']}'),
-      duration: const Duration(seconds: 3),
+      duration: AppConfig.snackbarDuration,
     ));
 
     // print collected data to console for developer
@@ -81,17 +83,17 @@ class _RegisterPageState extends State<RegisterPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _clinicController,
-          style: const TextStyle(color: Colors.white),
+          style: AppTextStyles.formFieldText,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white24,
+            fillColor: AppColors.inputFill,
             hintText: 'Nombre de la clínica',
-            hintStyle: const TextStyle(color: Colors.white70),
-            prefixIcon: const Icon(Icons.location_city, color: Colors.white),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            hintStyle: AppTextStyles.formFieldHint,
+            prefixIcon: const Icon(Icons.location_city, color: AppColors.inputIcon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
           ),
           validator: (v) {
             if (_accountType == AccountType.pediatrician && (v == null || v.isEmpty)) return 'Ingresa el nombre de la clínica';
@@ -99,17 +101,17 @@ class _RegisterPageState extends State<RegisterPage> {
           },
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _licenseController,
-          style: const TextStyle(color: Colors.white),
+          style: AppTextStyles.formFieldText,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white24,
+            fillColor: AppColors.inputFill,
             hintText: 'Número de licencia profesional',
-            hintStyle: const TextStyle(color: Colors.white70),
-            prefixIcon: const Icon(Icons.badge_outlined, color: Colors.white),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            hintStyle: AppTextStyles.formFieldHint,
+            prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.inputIcon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
           ),
           validator: (v) {
             if (_accountType == AccountType.pediatrician && (v == null || v.isEmpty)) return 'Ingresa número de licencia';
@@ -117,17 +119,17 @@ class _RegisterPageState extends State<RegisterPage> {
           },
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _specialtyController,
-          style: const TextStyle(color: Colors.white),
+          style: AppTextStyles.formFieldText,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white24,
+            fillColor: AppColors.inputFill,
             hintText: 'Especialidad (p. ej. Neonatología)',
-            hintStyle: const TextStyle(color: Colors.white70),
-            prefixIcon: const Icon(Icons.medical_services_outlined, color: Colors.white),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            hintStyle: AppTextStyles.formFieldHint,
+            prefixIcon: const Icon(Icons.medical_services_outlined, color: AppColors.inputIcon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
           ),
           validator: (v) {
             if (_accountType == AccountType.pediatrician && (v == null || v.isEmpty)) return 'Ingresa especialidad';
@@ -135,32 +137,32 @@ class _RegisterPageState extends State<RegisterPage> {
           },
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _addressController,
-          style: const TextStyle(color: Colors.white),
+          style: AppTextStyles.formFieldText,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white24,
+            fillColor: AppColors.inputFill,
             hintText: 'Dirección de trabajo',
-            hintStyle: const TextStyle(color: Colors.white70),
-            prefixIcon: const Icon(Icons.map_outlined, color: Colors.white),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            hintStyle: AppTextStyles.formFieldHint,
+            prefixIcon: const Icon(Icons.map_outlined, color: AppColors.inputIcon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _experienceController,
           keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
+          style: AppTextStyles.formFieldText,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white24,
+            fillColor: AppColors.inputFill,
             hintText: 'Años de experiencia',
-            hintStyle: const TextStyle(color: Colors.white70),
-            prefixIcon: const Icon(Icons.schedule, color: Colors.white),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            hintStyle: AppTextStyles.formFieldHint,
+            prefixIcon: const Icon(Icons.schedule, color: AppColors.inputIcon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
           ),
         ),
       ],
@@ -173,7 +175,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: baseColor,
+        backgroundColor: AppColors.primary,
         title: const Text('Registro'),
         elevation: 0,
       ),
@@ -184,26 +186,26 @@ class _RegisterPageState extends State<RegisterPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFBE6DF), baseColor],
+            colors: [AppColors.primaryLight, AppColors.primary],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingXLarge, vertical: AppDimens.paddingXLarge),
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: mq.width > 700 ? 700 : mq.width),
+                constraints: BoxConstraints(maxWidth: mq.width > AppDimens.maxContentWidth ? AppDimens.maxContentWidth : mq.width),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 8),
-                      const Text('Crear cuenta', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 6),
-                      const Text('Elige tipo de cuenta y completa los datos', style: TextStyle(color: Colors.white70)),
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      const Text('Crear cuenta', style: AppTextStyles.heading3White),
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      const Text('Elige tipo de cuenta y completa los datos', style: AppTextStyles.subtitle2White),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppDimens.paddingLarge),
                       // Account type toggle
                       Row(
                         children: [
@@ -211,63 +213,63 @@ class _RegisterPageState extends State<RegisterPage> {
                             child: GestureDetector(
                               onTap: () => setState(() => _accountType = AccountType.user),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: AppDimens.paddingMedium),
                                 decoration: BoxDecoration(
-                                  color: _accountType == AccountType.user ? Colors.white24 : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.white12),
+                                  color: _accountType == AccountType.user ? AppColors.inputFill : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium),
+                                  border: Border.all(color: AppColors.inputFillDark),
                                 ),
-                                child: const Center(child: Text('Usuario', style: TextStyle(color: Colors.white))),
+                                child: const Center(child: Text('Usuario', style: AppTextStyles.subtitle2White)),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppDimens.paddingMedium),
                           Expanded(
                             child: GestureDetector(
                               onTap: () => setState(() => _accountType = AccountType.pediatrician),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: AppDimens.paddingMedium),
                                 decoration: BoxDecoration(
-                                  color: _accountType == AccountType.pediatrician ? Colors.white24 : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.white12),
+                                  color: _accountType == AccountType.pediatrician ? AppColors.inputFill : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium),
+                                  border: Border.all(color: AppColors.inputFillDark),
                                 ),
-                                child: const Center(child: Text('Pediatra', style: TextStyle(color: Colors.white))),
+                                child: const Center(child: Text('Pediatra', style: AppTextStyles.subtitle2White)),
                               ),
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppDimens.paddingLarge),
 
                       // Common fields
                       TextFormField(
                         controller: _nameController,
-                        style: const TextStyle(color: Colors.white),
+                        style: AppTextStyles.formFieldText,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white24,
+                          fillColor: AppColors.inputFill,
                           hintText: 'Nombre completo',
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.person_outline, color: Colors.white),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          hintStyle: AppTextStyles.formFieldHint,
+                          prefixIcon: const Icon(Icons.person_outline, color: AppColors.inputIcon),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
                         ),
                         validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppDimens.paddingMedium),
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        style: const TextStyle(color: Colors.white),
+                        style: AppTextStyles.formFieldText,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white24,
+                          fillColor: AppColors.inputFill,
                           hintText: 'tucorreo@ejemplo.com',
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.email_outlined, color: Colors.white),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          hintStyle: AppTextStyles.formFieldHint,
+                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.inputIcon),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Ingresa tu email';
@@ -276,64 +278,64 @@ class _RegisterPageState extends State<RegisterPage> {
                         },
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppDimens.paddingMedium),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscure,
-                        style: const TextStyle(color: Colors.white),
+                        style: AppTextStyles.formFieldText,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white24,
+                          fillColor: AppColors.inputFill,
                           hintText: 'Contraseña',
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.white),
+                          hintStyle: AppTextStyles.formFieldHint,
+                          prefixIcon: const Icon(Icons.lock_outline, color: AppColors.inputIcon),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: Colors.white),
+                            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: AppColors.inputIcon),
                             onPressed: () => setState(() => _obscure = !_obscure),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
-                          if (v.length < 6) return 'Mínimo 6 caracteres';
+                          if (v.length < AppConfig.minPasswordLength) return 'Mínimo ${AppConfig.minPasswordLength} caracteres';
                           return null;
                         },
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppDimens.paddingMedium),
                       TextFormField(
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
-                        style: const TextStyle(color: Colors.white),
+                        style: AppTextStyles.formFieldText,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white24,
+                          fillColor: AppColors.inputFill,
                           hintText: 'Teléfono (opcional)',
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.phone_outlined, color: Colors.white),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          hintStyle: AppTextStyles.formFieldHint,
+                          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.inputIcon),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
                         ),
                       ),
 
                       // Pediatrician extra fields
                       if (_accountType == AccountType.pediatrician) _pediatricianFields(),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: AppDimens.paddingXLarge),
                       SizedBox(
                         height: 52,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: baseColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            backgroundColor: AppColors.textWhite,
+                            foregroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge)),
                           ),
-                          child: _isLoading ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: baseColor, strokeWidth: 2)) : const Text('Crear cuenta', style: TextStyle(fontWeight: FontWeight.w700)),
+                          child: _isLoading ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)) : const Text('Crear cuenta', style: AppTextStyles.buttonText),
                         ),
                       ),
 
-                      const SizedBox(height: 12),
-                      const Center(child: Text('Al registrarte aceptas los términos', style: TextStyle(color: Colors.white70))),
+                      const SizedBox(height: AppDimens.paddingMedium),
+                      const Center(child: Text('Al registrarte aceptas los términos', style: AppTextStyles.captionWhite)),
                     ],
                   ),
                 ),
