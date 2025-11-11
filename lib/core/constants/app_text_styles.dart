@@ -5,21 +5,45 @@ import 'app_colors.dart';
 class AppTextStyles {
   // Headings
   static const heading1 = TextStyle(
-    fontSize: 32,
-    fontWeight: FontWeight.w800,
-    color: AppColors.text,
+    fontSize: 36,
+    fontWeight: FontWeight.w900,
+    color: AppColors.textWhite,
+    letterSpacing: 0.6,
+    shadows: [
+      Shadow(
+        color: Color(0x44000000),
+        offset: Offset(0, 2),
+        blurRadius: 6,
+      ),
+    ],
   );
 
   static const heading2 = TextStyle(
-    fontSize: 26,
-    fontWeight: FontWeight.w800,
-    color: AppColors.text,
+    fontSize: 30,
+    fontWeight: FontWeight.w900,
+    color: AppColors.textWhite,
+    letterSpacing: 0.4,
+    shadows: [
+      Shadow(
+        color: Color(0x33000000),
+        offset: Offset(0, 1.5),
+        blurRadius: 4,
+      ),
+    ],
   );
 
   static const heading3 = TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
-    color: AppColors.text,
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    color: AppColors.textWhite,
+    letterSpacing: 0.3,
+    shadows: [
+      Shadow(
+        color: Color(0x22000000),
+        offset: Offset(0, 1),
+        blurRadius: 3,
+      ),
+    ],
   );
 
   // White headings (for dark backgrounds)

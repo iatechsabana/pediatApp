@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../assistant/presentation/pages/assistant_page.dart';
+import 'medical_history_page.dart';
+import 'family_core_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
-import '../../../../core/constants/app_text_styles.dart';
+// app_text_styles import removed (not used in this file)
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -14,7 +16,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
+    // MediaQuery available if needed
 
     return Scaffold(
       appBar: AppBar(
@@ -49,6 +51,8 @@ class _DashboardPageState extends State<DashboardPage> {
             ListTile(leading: const Icon(Icons.dashboard), title: const Text('Inicio'), onTap: () => Navigator.pop(context)),
             ListTile(leading: const Icon(Icons.person), title: const Text('Perfil'), onTap: () {}),
             ListTile(leading: const Icon(Icons.calendar_today), title: const Text('Citas'), onTap: () {}),
+            ListTile(leading: const Icon(Icons.history_edu), title: const Text('Antecedentes médicos'), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MedicalHistoryPage()))),
+            ListTile(leading: const Icon(Icons.family_restroom), title: const Text('Núcleo familiar'), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FamilyCorePage()))),
             const Spacer(),
             ListTile(leading: const Icon(Icons.logout), title: const Text('Cerrar sesión'), onTap: () {}),
           ],
@@ -129,7 +133,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             const SizedBox(height: 12),
                             Expanded(child: _buildAppointmentsOverview()),
                             const SizedBox(height: 12),
-                            SizedBox(height: mq.size.height * 0.28, child: _buildRecentList()),
+                            Expanded(child: _buildRecentList()),
                           ],
                         );
                 }),
@@ -167,11 +171,19 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium)),
+            // withOpacity deprecated -> use withAlpha to set equivalent transparency
+            decoration: BoxDecoration(color: AppColors.primary.withAlpha(31), borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium)),
             child: Icon(icon, color: AppColors.primary),
           ),
           const SizedBox(width: AppDimens.paddingMedium),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: AppColors.textBlack54)), const SizedBox(height: 6), Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))]),
+          // Make the text column flexible so it wraps on small widths instead of overflowing
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(color: AppColors.textBlack54), overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ]),
+          ),
         ],
       ),
     );
@@ -216,7 +228,7 @@ class _DashboardPageState extends State<DashboardPage> {
               itemCount: items.length,
               separatorBuilder: (_, __) => const Divider(height: 8),
               itemBuilder: (context, index) => ListTile(
-                leading: CircleAvatar(backgroundColor: AppColors.primary.withOpacity(0.12), child: Icon(Icons.event_note, color: AppColors.primary)),
+                leading: CircleAvatar(backgroundColor: AppColors.primary.withAlpha(31), child: Icon(Icons.event_note, color: AppColors.primary)),
                 title: Text(items[index]),
                 subtitle: Text('Hace ${10 - index} min'),
               ),
@@ -242,7 +254,7 @@ class _DashboardPageState extends State<DashboardPage> {
               itemCount: appointments.length,
               itemBuilder: (context, idx) => ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(8)), child: Text(appointments[idx]['time']!, style: const TextStyle(fontWeight: FontWeight.w700))),
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(8)), child: Text(appointments[idx]['time']!, style: const TextStyle(fontWeight: FontWeight.w700))),
                 title: Text(appointments[idx]['name']!),
                 trailing: IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
               ),

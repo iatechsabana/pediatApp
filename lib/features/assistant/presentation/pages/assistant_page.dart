@@ -3,7 +3,7 @@ import '../../data/faqs.dart';
 import '../../data/llm_client.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
-import '../../../../core/constants/app_text_styles.dart';
+// app_text_styles import removed (not used in this file)
 import '../../../../core/constants/app_config.dart';
 
 class AssistantPage extends StatefulWidget {
