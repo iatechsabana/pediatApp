@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 /// Centralized color palette for the pediatric app
 class AppColors {
-  // Primary brand colors (solid metallic blue)
-  // Deeper, more saturated metallic blue for stronger contrast
-  static const primary = Color(0xFF153A54); // solid metallic blue
-  static const primaryLight = Color(0xFFD9EEF9);
+  // Primary brand colors (turquesa vivo elegido)
+  // Turquesa vivo elegido (opción 2): #1ABC9C
+  static const primary = Color(0xFF1ABC9C);
+  // Variante clara para fondos y gradientes
+  static const primaryLight = Color(0xFFBDEEE6);
 
   // Background & Surfaces
   static const background = Color(0xFFFFFFFF);
@@ -48,9 +49,9 @@ class AppColors {
   static const iconLight = Color(0xFFFFFFFF);
 
   // Gradient colors
-  static const Color gradientStart = Color(0xFFD9EEF9);
-  static const Color gradientEnd = Color(0xFF153A54);
+  static const Color gradientStart = Color(0xFFBDEEE6);
+  static const Color gradientEnd = Color(0xFF1ABC9C);
 
   // Badge/Tag colors
-  static const badgeBackground = Color(0xFF153A54);
+  static const badgeBackground = Color(0xFF1ABC9C);
 }
