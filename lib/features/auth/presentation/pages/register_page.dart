@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/constants/app_config.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -48,35 +51,58 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(AppConfig.simulatedSubmitDelay);
+    try {
+      // 1. Crear usuario en Firebase Auth
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-    final data = {
-      'type': _accountType == AccountType.user ? 'Usuario' : 'Pediatra',
-      'name': _nameController.text.trim(),
-      'email': _emailController.text.trim(),
-      'phone': _phoneController.text.trim(),
-    };
-    if (_accountType == AccountType.pediatrician) {
-      data.addAll({
-        'clinic': _clinicController.text.trim(),
-        'license': _licenseController.text.trim(),
-        'specialty': _specialtyController.text.trim(),
-        'address': _addressController.text.trim(),
-        'experience': _experienceController.text.trim(),
-      });
+      // 2. Preparar datos para Firestore
+      final data = {
+        'uid': credential.user?.uid,
+        'type': _accountType == AccountType.user ? 'usuario' : 'pediatra',
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+      };
+      if (_accountType == AccountType.pediatrician) {
+        data.addAll({
+          'clinic': _clinicController.text.trim(),
+          'license': _licenseController.text.trim(),
+          'specialty': _specialtyController.text.trim(),
+          'address': _addressController.text.trim(),
+          'experience': _experienceController.text.trim(),
+        });
+      }
+
+      // 3. Guardar datos en Firestore
+      await FirebaseFirestore.instance.collection('users').doc(credential.user?.uid).set(data);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Registro exitoso: ${data['type']} - ${data['email']}'),
+        duration: AppConfig.snackbarDuration,
+      ));
+      // Redirigir al login después de registro exitoso
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        Navigator.of(context).pop(); // Vuelve a la pantalla anterior (login)
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: ${e.message}'),
+        duration: AppConfig.errorSnackbarDuration,
+      ));
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error inesperado: $e'),
+        duration: AppConfig.errorSnackbarDuration,
+      ));
     }
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    // For now show a summary SnackBar. In production you'd send this to backend.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Registro simulado: ${data['type']} - ${data['email']}'),
-      duration: AppConfig.snackbarDuration,
-    ));
-
-    // print collected data to console for developer
-    // ignore: avoid_print
-    print('Registro simulado datos: $data');
   }
 
   Widget _pediatricianFields() {

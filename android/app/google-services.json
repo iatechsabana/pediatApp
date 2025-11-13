@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "518164761248",
+    "project_id": "pediapp-fe927",
+    "storage_bucket": "pediapp-fe927.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:518164761248:android:caa0d87d25f782a10917c5",
+        "android_client_info": {
+          "package_name": "com.example.pediapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA__N-SbQ7ffDBXym4pCE5jTDuZRPidFYM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

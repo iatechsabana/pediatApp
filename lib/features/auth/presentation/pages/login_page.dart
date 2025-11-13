@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+
 import 'register_page.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/constants/app_config.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,12 +35,53 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(AppConfig.simulatedLoadDelay);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Login simulado exitosamente'), duration: AppConfig.snackbarDuration));
-    setState(() => _isLoading = false);
-    // Navigate to dashboard
-    if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardPage()));
+    try {
+      // 1. Login con Firebase Auth
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // 2. Obtener datos del usuario desde Firestore
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(credential.user?.uid).get();
+      if (!userDoc.exists) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se encontró información de usuario.'),
+          duration: AppConfig.errorSnackbarDuration,
+        ));
+        return;
+      }
+      final userData = userDoc.data();
+      final tipo = userData?['type'] ?? 'usuario';
+
+      // Guardar datos del usuario en SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('uid', credential.user?.uid ?? '');
+      await prefs.setString('email', userData?['email'] ?? '');
+      await prefs.setString('name', userData?['name'] ?? '');
+      await prefs.setString('type', tipo);
+
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Bienvenido, tipo: $tipo'),
+        duration: AppConfig.snackbarDuration,
+      ));
+      // Aquí puedes navegar a diferentes pantallas según el tipo si lo deseas
+      if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardPage()));
+    } on FirebaseAuthException catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: ${e.message}'),
+        duration: AppConfig.errorSnackbarDuration,
+      ));
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error inesperado: $e'),
+        duration: AppConfig.errorSnackbarDuration,
+      ));
+    }
   }
 
   @override
