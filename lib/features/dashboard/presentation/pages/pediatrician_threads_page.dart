@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'thread_comments_page.dart';
 
 class PediatricianThreadsPage extends StatefulWidget {
   const PediatricianThreadsPage({super.key});
@@ -10,27 +13,6 @@ class PediatricianThreadsPage extends StatefulWidget {
 }
 
 class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
-  final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
-  bool _isCreating = false;
-
-  Future<void> _createThread() async {
-    if (_titleController.text.trim().isEmpty || _contentController.text.trim().isEmpty) return;
-    setState(() => _isCreating = true);
-    final user = FirebaseAuth.instance.currentUser;
-    await FirebaseFirestore.instance.collection('threads').add({
-      'title': _titleController.text.trim(),
-      'content': _contentController.text.trim(),
-      'authorId': user?.uid,
-      'authorName': user?.displayName ?? user?.email ?? 'Pediatra',
-      'createdAt': FieldValue.serverTimestamp(),
-      'commentsCount': 0,
-    });
-    setState(() => _isCreating = false);
-    _titleController.clear();
-    _contentController.clear();
-    Navigator.of(context).pop();
-  }
 
   void _showCreateThreadDialog() {
     showModalBottomSheet(
@@ -50,18 +32,18 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Nuevo hilo', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('Crear publicación', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Título del tema'),
+              decoration: const InputDecoration(labelText: '¿Sobre qué quieres compartir?'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _contentController,
               minLines: 3,
               maxLines: 6,
-              decoration: const InputDecoration(labelText: 'Contenido'),
+              decoration: const InputDecoration(labelText: 'Comparte tu experiencia, pregunta o tema...'),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -73,7 +55,7 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
               ),
               child: _isCreating
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Publicar hilo', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  : const Text('Publicar', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ],
         ),
@@ -81,70 +63,206 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
     );
   }
 
+    Widget _buildCommunityHeader() {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1ABC9C),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.groups, color: Colors.white, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Comunidad Pediátrica',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  final _titleController = TextEditingController();
+  final _contentController = TextEditingController();
+  bool _isCreating = false;
+  String? _userName;
+  String? _userAvatar;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final data = doc.data();
+    setState(() {
+      _userName = data?['name'] ?? user.email ?? 'Pediatra';
+      _userAvatar = null; // Si tienes campo de avatar, asígnalo aquí
+    });
+  }
+
+  Future<void> _createThread() async {
+    if (_titleController.text.trim().isEmpty || _contentController.text.trim().isEmpty) return;
+    setState(() => _isCreating = true);
+    final user = FirebaseAuth.instance.currentUser;
+    await FirebaseFirestore.instance.collection('threads').add({
+      'title': _titleController.text.trim(),
+      'content': _contentController.text.trim(),
+      'authorId': user?.uid,
+      'authorName': _userName ?? user?.email ?? 'Pediatra',
+      'createdAt': FieldValue.serverTimestamp(),
+      'commentsCount': 0,
+    });
+    setState(() => _isCreating = false);
+    _titleController.clear();
+    _contentController.clear();
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hilos de Pediatras'),
-        backgroundColor: Colors.teal,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_comment_rounded),
-            tooltip: 'Crear nuevo hilo',
-            onPressed: _showCreateThreadDialog,
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('threads').orderBy('createdAt', descending: true).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No hay hilos aún. ¡Crea el primero!'));
-          }
-          final threads = snapshot.data!.docs;
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: threads.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 16),
-            itemBuilder: (context, i) {
-              final t = threads[i].data() as Map<String, dynamic>;
-              return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(20),
-                  title: Text(t['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      Text(t['content'] ?? '', maxLines: 3, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 12),
-                      Row(
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('threads').orderBy('createdAt', descending: true).snapshots(),
+      builder: (context, snapshot) {
+        final threads = snapshot.hasData ? snapshot.data!.docs : [];
+        return Stack(
+          children: [
+            ListView.builder(
+              padding: const EdgeInsets.only(bottom: 90),
+              itemCount: 1 + threads.length,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _buildCommunityHeader(),
+                  );
+                }
+                if (threads.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(child: Text('No hay publicaciones aún. ¡Crea la primera!')),
+                  );
+                }
+                final t = threads[index - 1].data() as Map<String, dynamic>;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.person, size: 18, color: Colors.teal),
-                          const SizedBox(width: 4),
-                          Text(t['authorName'] ?? '', style: const TextStyle(fontWeight: FontWeight.w500)),
-                          const Spacer(),
-                          const Icon(Icons.comment, size: 18, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text('${t['commentsCount'] ?? 0}'),
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Colors.teal.shade100,
+                                child: const Icon(Icons.person, color: Colors.teal),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                t['authorName'] ?? '',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              const Spacer(),
+                              Text(
+                                t['createdAt'] != null && t['createdAt'] is Timestamp
+                                    ? _formatDate((t['createdAt'] as Timestamp).toDate())
+                                    : '',
+                                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            t['title'] ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            t['content'] ?? '',
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Icon(Icons.comment, size: 18, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text('${t['commentsCount'] ?? 0} comentarios', style: const TextStyle(fontSize: 13)),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.chat_bubble_outline, color: Colors.teal),
+                                tooltip: 'Comentar',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => ThreadCommentsPage(
+                                        threadId: threads[index - 1].id,
+                                        threadTitle: t['title'] ?? '',
+                                        threadContent: t['content'] ?? '',
+                                        threadAuthorId: t['authorId'] ?? '',
+                                        threadAuthorName: t['authorName'] ?? '',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                  onTap: () {
-                    // Aquí puedes navegar a la pantalla de comentarios del hilo
-                  },
-                ),
-              );
-            },
-          );
-        },
-      ),
+                );
+              },
+            ),
+            Positioned(
+              bottom: 24,
+              right: 24,
+              child: FloatingActionButton.extended(
+                onPressed: _showCreateThreadDialog,
+                backgroundColor: Colors.teal,
+                icon: _userAvatar != null
+                    ? CircleAvatar(backgroundImage: NetworkImage(_userAvatar!), radius: 14)
+                    : const Icon(Icons.edit),
+                label: Text(_userName != null ? 'Publicar como $_userName' : 'Crear publicación'),
+                elevation: 6,
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+// Código duplicado eliminado
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    if (now.difference(date).inDays == 0) {
+      return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} hoy';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 }

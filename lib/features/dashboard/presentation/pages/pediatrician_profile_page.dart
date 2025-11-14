@@ -15,10 +15,6 @@ class PediatricianProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perfil del Pediatra'),
-        backgroundColor: Colors.teal,
-      ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _getProfile(),
         builder: (context, snapshot) {
@@ -29,83 +25,167 @@ class PediatricianProfilePage extends StatelessWidget {
           if (data == null) {
             return const Center(child: Text('No se encontró información.'));
           }
-          return Padding(
-            padding: const EdgeInsets.all(24),
+          return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: Colors.teal.shade100,
-                  child: const Icon(Icons.person, size: 60, color: Colors.teal),
-                ),
-                const SizedBox(height: 20),
-                Text(data['name'] ?? '', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(data['email'] ?? '', style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                const SizedBox(height: 16),
-                if (data['specialty'] != null)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFBDEEE6), Color(0xFF1ABC9C)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+                  ),
+                  child: Column(
                     children: [
-                      const Icon(Icons.medical_services, color: Colors.teal),
-                      const SizedBox(width: 6),
-                      Text(data['specialty'], style: const TextStyle(fontSize: 16)),
+                      CircleAvatar(
+                        radius: 48,
+                        backgroundColor: Colors.white,
+                        child: const Icon(Icons.person, size: 60, color: Colors.teal),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        data['name'] ?? '',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.teal, fontFamily: 'Roboto'),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        data['email'] ?? '',
+                        style: const TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (data['specialty'] != null) ...[
+                            const Icon(Icons.medical_services, color: Colors.teal, size: 20),
+                            const SizedBox(width: 6),
+                            Text(data['specialty'], style: const TextStyle(fontSize: 16)),
+                          ],
+                          if (data['clinic'] != null) ...[
+                            const SizedBox(width: 16),
+                            const Icon(Icons.location_city, color: Colors.teal, size: 20),
+                            const SizedBox(width: 6),
+                            Text(data['clinic'], style: const TextStyle(fontSize: 16)),
+                          ],
+                        ],
+                      ),
+                      if (data['license'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.badge, color: Colors.teal, size: 20),
+                              const SizedBox(width: 6),
+                              Text('Licencia: ${data['license']}', style: const TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                        ),
+                      if (data['experience'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.schedule, color: Colors.teal, size: 20),
+                              const SizedBox(width: 6),
+                              Text('${data['experience']} años de experiencia', style: const TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                        ),
+                      if (data['address'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.map, color: Colors.teal, size: 20),
+                              const SizedBox(width: 6),
+                              Text(data['address'], style: const TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
-                if (data['clinic'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.location_city, color: Colors.teal),
-                        const SizedBox(width: 6),
-                        Text(data['clinic'], style: const TextStyle(fontSize: 16)),
-                      ],
-                    ),
+                ),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatBox(Icons.groups, 'Comunidad', '12'),
+                      _buildStatBox(Icons.comment, 'Comentarios', '34'),
+                      _buildStatBox(Icons.monetization_on, 'Créditos', '12'),
+                    ],
                   ),
-                if (data['license'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.badge, color: Colors.teal),
-                        const SizedBox(width: 6),
-                        Text('Licencia: ${data['license']}', style: const TextStyle(fontSize: 16)),
-                      ],
-                    ),
+                ),
+                const SizedBox(height: 30),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Sobre mí', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.teal)),
+                      const SizedBox(height: 10),
+                      Text(
+                        data['about'] ?? 'Pediatra comprometido con la salud infantil.',
+                        style: const TextStyle(fontSize: 15),
+                      ),
+                      const SizedBox(height: 30),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () {},
+                            icon: const Icon(Icons.edit, color: Colors.white),
+                            label: const Text('Editar perfil'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () {},
+                            icon: const Icon(Icons.logout, color: Colors.teal),
+                            label: const Text('Cerrar sesión', style: TextStyle(color: Colors.teal)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.teal),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                if (data['experience'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.schedule, color: Colors.teal),
-                        const SizedBox(width: 6),
-                        Text('${data['experience']} años de experiencia', style: const TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                if (data['address'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.map, color: Colors.teal),
-                        const SizedBox(width: 6),
-                        Text(data['address'], style: const TextStyle(fontSize: 16)),
-                      ],
-                    ),
-                  ),
+                ),
+                const SizedBox(height: 30),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildStatBox(IconData icon, String label, String value) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: Colors.teal.shade50,
+          child: Icon(icon, color: Colors.teal, size: 26),
+        ),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+      ],
     );
   }
 }
