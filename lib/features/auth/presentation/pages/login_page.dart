@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'register_page.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../../dashboard/presentation/pages/pediatrician_dashboard_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
 import '../../../../core/constants/app_text_styles.dart';
@@ -67,8 +68,18 @@ class _LoginPageState extends State<LoginPage> {
         content: Text('Bienvenido, tipo: $tipo'),
         duration: AppConfig.snackbarDuration,
       ));
-      // Aquí puedes navegar a diferentes pantallas según el tipo si lo deseas
-      if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardPage()));
+      // Navegar a dashboard según tipo de usuario
+      if (mounted) {
+        if (tipo == 'pediatra') {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const PediatricianDashboardPage()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const DashboardPage()),
+          );
+        }
+      }
     } on FirebaseAuthException catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
