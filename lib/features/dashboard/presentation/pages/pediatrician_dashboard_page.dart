@@ -31,14 +31,14 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
         final int pendientes = data?['pending'] ?? 0;
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFBDEEE6), Color(0xFF1ABC9C)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black12,
@@ -110,12 +110,12 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _pages = [
+    final List<Widget> pages = [
       PediatricianProfilePage(),
       Column(
         children: [
           _buildHeader(context),
-          const SizedBox(height: 12),
+          // Eliminar espacio extra
           const Expanded(child: PediatricianThreadsPage()),
         ],
       ),
@@ -127,13 +127,8 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
       ),
     ];
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.teal,
-        automaticallyImplyLeading: false,
-      ),
-      body: _pages[_selectedIndex],
+      // AppBar eliminado para ahorrar espacio en blanco superior
+      body: pages[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

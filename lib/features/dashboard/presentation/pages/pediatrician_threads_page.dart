@@ -163,6 +163,7 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                   );
                 }
                 final t = threads[index - 1].data() as Map<String, dynamic>;
+                final threadId = threads[index - 1].id;
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Card(
@@ -209,7 +210,17 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                             children: [
                               Icon(Icons.comment, size: 18, color: Colors.grey[600]),
                               const SizedBox(width: 4),
-                              Text('${t['commentsCount'] ?? 0} comentarios', style: const TextStyle(fontSize: 13)),
+                              StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('threads')
+                                    .doc(threadId)
+                                    .collection('comments')
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                                  return Text('$count comentarios', style: const TextStyle(fontSize: 13));
+                                },
+                              ),
                               const Spacer(),
                               IconButton(
                                 icon: const Icon(Icons.chat_bubble_outline, color: Colors.teal),
@@ -218,7 +229,7 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) => ThreadCommentsPage(
-                                        threadId: threads[index - 1].id,
+                                        threadId: threadId,
                                         threadTitle: t['title'] ?? '',
                                         threadContent: t['content'] ?? '',
                                         threadAuthorId: t['authorId'] ?? '',

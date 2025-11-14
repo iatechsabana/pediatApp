@@ -6,9 +6,9 @@ abstract class Failure {
 }
 
 class AuthFailure extends Failure {
-  AuthFailure(String message, {String? code}) : super(message, code: code);
+  AuthFailure(super.message, {super.code});
 }
 
 class NetworkFailure extends Failure {
-  NetworkFailure(String message, {String? code}) : super(message, code: code);
+  NetworkFailure(super.message, {super.code});
 }
