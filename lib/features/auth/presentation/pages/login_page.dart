@@ -35,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
       // 1. Login con Firebase Auth
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -46,11 +46,13 @@ class _LoginPageState extends State<LoginPage> {
       // 2. Obtener datos del usuario desde Firestore
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(credential.user?.uid).get();
       if (!userDoc.exists) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No se encontró información de usuario.'),
-          duration: AppConfig.errorSnackbarDuration,
-        ));
+        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('No se encontró información de usuario.'),
+            duration: AppConfig.errorSnackbarDuration,
+          ));
+        }
         return;
       }
       final userData = userDoc.data();
@@ -63,13 +65,13 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('name', userData?['name'] ?? '');
       await prefs.setString('type', tipo);
 
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Bienvenido, tipo: $tipo'),
-        duration: AppConfig.snackbarDuration,
-      ));
-      // Navegar a dashboard según tipo de usuario
+      if (mounted) setState(() => _isLoading = false);
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Bienvenido, tipo: $tipo'),
+          duration: AppConfig.snackbarDuration,
+        ));
+        // Navegar a dashboard según tipo de usuario
         if (tipo == 'pediatra') {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const PediatricianDashboardPage()),
@@ -81,17 +83,21 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error: ${e.message}'),
-        duration: AppConfig.errorSnackbarDuration,
-      ));
+      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: ${e.message}'),
+          duration: AppConfig.errorSnackbarDuration,
+        ));
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error inesperado: $e'),
-        duration: AppConfig.errorSnackbarDuration,
-      ));
+      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error inesperado: $e'),
+          duration: AppConfig.errorSnackbarDuration,
+        ));
+      }
     }
   }
 

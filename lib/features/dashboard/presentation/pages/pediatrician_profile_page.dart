@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -151,7 +153,25 @@ class PediatricianProfilePage extends StatelessWidget {
                             ),
                           ),
                           OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () async {
+                              try {
+                                await FirebaseAuth.instance.signOut();
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.clear();
+                                if (context.mounted) {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                                    (route) => false,
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error al cerrar sesión: $e')),
+                                  );
+                                }
+                              }
+                            },
                             icon: const Icon(Icons.logout, color: Colors.teal),
                             label: const Text('Cerrar sesión', style: TextStyle(color: Colors.teal)),
                             style: OutlinedButton.styleFrom(
