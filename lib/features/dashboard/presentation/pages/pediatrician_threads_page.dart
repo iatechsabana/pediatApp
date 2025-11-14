@@ -13,6 +13,64 @@ class PediatricianThreadsPage extends StatefulWidget {
 }
 
 class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
+  String? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    _loadUserData();
+  }
+
+  Future<void> _editThread(String threadId, String oldTitle, String oldContent) async {
+    final titleController = TextEditingController(text: oldTitle);
+    final contentController = TextEditingController(text: oldContent);
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar publicación'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Título'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: contentController,
+              minLines: 2,
+              maxLines: 6,
+              decoration: const InputDecoration(labelText: 'Contenido'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await FirebaseFirestore.instance
+                  .collection('threads')
+                  .doc(threadId)
+                  .update({
+                'title': titleController.text.trim(),
+                'content': contentController.text.trim(),
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteThread(String threadId) async {
+    await FirebaseFirestore.instance.collection('threads').doc(threadId).delete();
+  }
 
   void _showCreateThreadDialog() {
     showModalBottomSheet(
@@ -103,11 +161,6 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
   String? _userName;
   String? _userAvatar;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
 
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -164,6 +217,7 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                 }
                 final t = threads[index - 1].data() as Map<String, dynamic>;
                 final threadId = threads[index - 1].id;
+                final isOwner = t['authorId'] == _currentUserId;
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Card(
@@ -193,6 +247,20 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                     : '',
                                 style: const TextStyle(color: Colors.grey, fontSize: 13),
                               ),
+                              if (isOwner)
+                                PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      _editThread(threadId, t['title'] ?? '', t['content'] ?? '');
+                                    } else if (value == 'delete') {
+                                      _deleteThread(threadId);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                                    const PopupMenuItem(value: 'delete', child: Text('Eliminar')),
+                                  ],
+                                ),
                             ],
                           ),
                           const SizedBox(height: 12),
