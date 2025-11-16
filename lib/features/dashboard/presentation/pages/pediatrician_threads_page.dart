@@ -12,6 +12,32 @@ class PediatricianThreadsPage extends StatefulWidget {
 }
 
 class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
+    Future<Map<String, dynamic>?> _getTodayStory() async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+      final doc = await FirebaseFirestore.instance.collection('stories').doc(user.uid).get();
+      final data = doc.data();
+      if (data == null) return null;
+      final ts = data['createdAt'];
+      if (ts == null) return null;
+      final date = (ts as Timestamp).toDate();
+      final now = DateTime.now();
+      if (date.year == now.year && date.month == now.month && date.day == now.day) {
+        return data;
+      }
+      return null;
+    }
+
+    Future<void> _saveTodayStory(String text) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      await FirebaseFirestore.instance.collection('stories').doc(user.uid).set({
+        'text': text,
+        'createdAt': FieldValue.serverTimestamp(),
+        'authorId': user.uid,
+        'authorName': user.displayName ?? 'Usuario',
+      });
+    }
   String? _currentUserId;
 
   @override
@@ -86,22 +112,95 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
   }
 
   Widget _buildStoryBox() {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.teal.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Text(
-          '¿Qué piensas hoy? (Historia 24h)',
-          style: TextStyle(
-            color: Colors.teal.shade700,
-            fontFamily: 'Montserrat',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _getTodayStory(),
+      builder: (context, storySnap) {
+        if (storySnap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final story = storySnap.data;
+        final controller = TextEditingController(text: story?['text'] ?? '');
+        bool isEditing = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('¿Qué piensas hoy?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+                const SizedBox(height: 8),
+                if (story != null && !isEditing)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: Text(story['text'] ?? '', style: const TextStyle(fontSize: 15))),
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          tooltip: 'Editar historia',
+                          onPressed: () => setState(() => isEditing = true),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          tooltip: 'Eliminar historia',
+                          onPressed: () async {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user == null) return;
+                            await FirebaseFirestore.instance.collection('stories').doc(user.uid).delete();
+                            // ignore: use_build_context_synchronously
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Historia eliminada.')));
+                            setState(() => isEditing = false);
+                            (context as Element).markNeedsBuild();
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  TextField(
+                    controller: controller,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      hintText: 'Comparte algo que solo dure 24h...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          if (controller.text.trim().isEmpty) return;
+                          await _saveTodayStory(controller.text.trim());
+                          // ignore: use_build_context_synchronously
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Historia publicada!')));
+                          setState(() => isEditing = false);
+                          (context as Element).markNeedsBuild();
+                        },
+                        icon: const Icon(Icons.send),
+                        label: Text(story != null ? 'Actualizar' : 'Publicar historia 24h'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                      if (story != null)
+                        TextButton(
+                          onPressed: () => setState(() => isEditing = false),
+                          child: const Text('Cancelar'),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
