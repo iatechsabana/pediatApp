@@ -22,11 +22,29 @@ class UserSelectPage extends StatelessWidget {
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (context, i) {
               final user = users[i].data();
+              final isOnline = user['online'] == true;
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: (user['photoUrl'] ?? '').toString().isNotEmpty
-                      ? NetworkImage(user['photoUrl'])
-                      : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
+                leading: Stack(
+                  children: [
+                    CircleAvatar(
+                      backgroundImage: (user['photoUrl'] ?? '').toString().isNotEmpty
+                          ? NetworkImage(user['photoUrl'])
+                          : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: isOnline ? Colors.green : Colors.grey,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 title: Text(user['name'] ?? 'Usuario'),
                 subtitle: Text(user['specialty'] ?? ''),

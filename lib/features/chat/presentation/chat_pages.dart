@@ -63,36 +63,64 @@ class ChatListPage extends StatelessWidget {
               ...chats.map((doc) {
                 final chat = chat_models.Chat.fromDoc(doc);
                 final otherUserId = chat.participants.firstWhere((id) => id != currentUserId, orElse: () => '');
-                return ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.person)),
-                  title: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
-                    builder: (context, userSnap) {
-                      if (!userSnap.hasData || !userSnap.data!.exists) return const Text('Usuario');
-                      final user = userSnap.data!.data()!;
-                      return Text(user['name'] ?? 'Usuario');
-                    },
-                  ),
-                  subtitle: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                    stream: FirebaseFirestore.instance
-                        .collection('chats')
-                        .doc(chat.id)
-                        .collection('messages')
-                        .orderBy('sentAt', descending: true)
-                        .limit(1)
-                        .snapshots(),
-                    builder: (context, msgSnap) {
-                      if (!msgSnap.hasData || msgSnap.data!.docs.isEmpty) return const Text('Sin mensajes');
-                      final lastMsg = msgSnap.data!.docs.first.data();
-                      return Text(lastMsg['text'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis);
-                    },
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatConversationPage(chatId: chat.id, currentUserId: currentUserId, otherUserId: otherUserId),
+                return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
+                  builder: (context, userSnap) {
+                    if (!userSnap.hasData || !userSnap.data!.exists) {
+                      return ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.person)),
+                        title: const Text('Usuario'),
+                        subtitle: const Text('Sin mensajes'),
+                      );
+                    }
+                    final user = userSnap.data!.data()!;
+                    final isOnline = user['online'] == true;
+                    return ListTile(
+                      leading: Stack(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: (user['photoUrl'] ?? '').toString().isNotEmpty
+                                ? NetworkImage(user['photoUrl'])
+                                : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: isOnline ? Colors.green : Colors.grey,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      title: Text(user['name'] ?? 'Usuario'),
+                      subtitle: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('chats')
+                            .doc(chat.id)
+                            .collection('messages')
+                            .orderBy('sentAt', descending: true)
+                            .limit(1)
+                            .snapshots(),
+                        builder: (context, msgSnap) {
+                          if (!msgSnap.hasData || msgSnap.data!.docs.isEmpty) return const Text('Sin mensajes');
+                          final lastMsg = msgSnap.data!.docs.first.data();
+                          return Text(lastMsg['text'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis);
+                        },
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatConversationPage(chatId: chat.id, currentUserId: currentUserId, otherUserId: otherUserId),
+                          ),
+                        );
+                      },
                     );
                   },
                 );

@@ -172,37 +172,60 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                       );
                                     }
                                   },
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 24,
-                                        backgroundColor: Colors.grey.shade300,
-                                        backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                                            ? NetworkImage(avatarUrl)
-                                            : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                  child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                    future: FirebaseFirestore.instance.collection('users').doc(data['authorId']).get(),
+                                    builder: (context, userSnap) {
+                                      final isOnline = userSnap.hasData && userSnap.data != null && userSnap.data!.data()?['online'] == true;
+                                      return Row(
                                         children: [
-                                          Text(
-                                            author,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 17,
-                                            ),
+                                          Stack(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 24,
+                                                backgroundColor: Colors.grey.shade300,
+                                                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                                    ? NetworkImage(avatarUrl)
+                                                    : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
+                                              ),
+                                              Positioned(
+                                                bottom: 0,
+                                                right: 0,
+                                                child: Container(
+                                                  width: 14,
+                                                  height: 14,
+                                                  decoration: BoxDecoration(
+                                                    color: isOnline ? Colors.green : Colors.grey,
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(color: Colors.white, width: 2),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          Text(
-                                            "${createdAt.day}/${createdAt.month}/${createdAt.year} "
-                                            "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}",
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey.shade500,
-                                            ),
+                                          const SizedBox(width: 12),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                author,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 17,
+                                                ),
+                                              ),
+                                              Text(
+                                                "${createdAt.day}/${createdAt.month}/${createdAt.year} "
+                                                "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey.shade500,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
-                                      ),
-                                    ],
+                                      );
+                                    },
                                   ),
                                 ),
                                 const Spacer(),
