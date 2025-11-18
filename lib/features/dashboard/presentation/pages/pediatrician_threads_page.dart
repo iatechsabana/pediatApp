@@ -3,9 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'thread_comments_page.dart';
+import 'pediatrician_profile_page.dart';
+import 'public_profile_page.dart';
+
+
+typedef OnTapOwnProfile = void Function();
 
 class PediatricianThreadsPage extends StatefulWidget {
-  const PediatricianThreadsPage({Key? key}) : super(key: key);
+  final OnTapOwnProfile? onTapOwnProfile;
+  const PediatricianThreadsPage({Key? key, this.onTapOwnProfile}) : super(key: key);
 
   @override
   State<PediatricianThreadsPage> createState() => _PediatricianThreadsPageState();
@@ -133,8 +139,8 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                         ? (data['createdAt'] as Timestamp).toDate()
                         : DateTime.now();
 
-                    final bool isOwn =
-                        user != null && data['authorId'] == user.uid;
+
+                    final bool isOwn = user != null && data['authorId'] == user.uid;
 
                     return Card(
                       elevation: 3,
@@ -143,50 +149,62 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
-
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
                             // ---------- HEADER ----------
                             Row(
                               children: [
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor: Colors.grey.shade300,
-                                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? NetworkImage(avatarUrl)
-                                      : const AssetImage('assets/images/doctorkids_logo.png')
-                                          as ImageProvider,
-                                ),
-
-                                const SizedBox(width: 12),
-
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                GestureDetector(
+                                  onTap: () {
+                                    if (user != null && data['authorId'] == user.uid) {
+                                      if (widget.onTapOwnProfile != null) {
+                                        widget.onTapOwnProfile!();
+                                      }
+                                    } else {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => PublicProfilePage(userId: data['authorId'], userName: author, userAvatar: avatarUrl),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        author,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 17,
-                                        ),
+                                      CircleAvatar(
+                                        radius: 24,
+                                        backgroundColor: Colors.grey.shade300,
+                                        backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                            ? NetworkImage(avatarUrl)
+                                            : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
                                       ),
-                                      Text(
-                                        "${createdAt.day}/${createdAt.month}/${createdAt.year} "
-                                        "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade500,
-                                        ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            author,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 17,
+                                            ),
+                                          ),
+                                          Text(
+                                            "${createdAt.day}/${createdAt.month}/${createdAt.year} "
+                                            "${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
                                 ),
-
+                                const Spacer(),
                                 if (isOwn)
                                   PopupMenuButton<String>(
                                     onSelected: (value) async {

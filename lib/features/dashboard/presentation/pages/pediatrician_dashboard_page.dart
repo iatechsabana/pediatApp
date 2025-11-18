@@ -122,7 +122,11 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
         children: [
           _buildHeader(context),
           // Eliminar espacio extra
-          const Expanded(child: PediatricianThreadsPage()),
+          Expanded(
+            child: PediatricianThreadsPage(
+              onTapOwnProfile: () => setState(() => _selectedIndex = 0),
+            ),
+          ),
         ],
       ),
       Center(
