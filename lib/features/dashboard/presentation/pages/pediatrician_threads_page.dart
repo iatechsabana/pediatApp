@@ -136,9 +136,14 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                     final String author = data['authorName'] ?? 'Usuario';
                     final String content = data['content'] ?? '';
                     final avatarUrl = data['authorAvatar'] as String?;
-                    final DateTime createdAt = data['createdAt'] != null
-                        ? (data['createdAt'] as Timestamp).toDate()
-                        : DateTime.now();
+                    DateTime createdAt;
+                    if (data['createdAt'] is Timestamp) {
+                      createdAt = (data['createdAt'] as Timestamp).toDate();
+                    } else if (data['createdAt'] is DateTime) {
+                      createdAt = data['createdAt'] as DateTime;
+                    } else {
+                      createdAt = DateTime.now();
+                    }
 
 
                     final bool isOwn = user != null && data['authorId'] == user.uid;
@@ -172,8 +177,8 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                       );
                                     }
                                   },
-                                  child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                                    future: FirebaseFirestore.instance.collection('users').doc(data['authorId']).get(),
+                                  child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                    stream: FirebaseFirestore.instance.collection('users').doc(data['authorId']).snapshots(),
                                     builder: (context, userSnap) {
                                       final isOnline = userSnap.hasData && userSnap.data != null && userSnap.data!.data()?['online'] == true;
                                       final isCurrentUser = user != null && data['authorId'] == user.uid;
@@ -475,11 +480,16 @@ class _StoryBoxEditableState extends State<_StoryBoxEditable> {
   Future<void> _saveStory(String text) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    await FirebaseFirestore.instance.collection('stories').doc(user.uid).set({
+    if (text.trim().isEmpty) return;
+    final docRef = FirebaseFirestore.instance.collection('stories').doc(user.uid);
+    final now = FieldValue.serverTimestamp();
+    await docRef.set({
       'text': text,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+      'updatedAt': now,
+      'createdAt': now,
+      'uid': user.uid,
+      'authorName': user.displayName ?? '',
+    }, SetOptions(merge: true));
   }
 
   Future<void> _deleteStory() async {

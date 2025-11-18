@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'pediatrician_threads_page.dart';
 import 'pediatrician_profile_page.dart';
+import '../../../chat/presentation/user_select_page.dart';
+import '../../../chat/presentation/chat_pages.dart';
 
 class PediatricianDashboardPage extends StatefulWidget {
   const PediatricianDashboardPage({super.key});
@@ -98,7 +100,46 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
               IconButton(
                 icon: const Icon(Icons.chat, color: Colors.teal, size: 26),
                 tooltip: 'Chat entre colegas',
-                onPressed: () {},
+                onPressed: () async {
+                  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                  final selectedUserId = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UserSelectPage()),
+                  );
+                  if (selectedUserId != null && selectedUserId != currentUserId) {
+                    // Buscar o crear chat y navegar
+                    final chatsQuery = await FirebaseFirestore.instance
+                        .collection('chats')
+                        .where('participants', arrayContains: currentUserId)
+                        .get();
+                    String? chatId;
+                    for (var doc in chatsQuery.docs) {
+                      final participants = List<String>.from(doc['participants'] ?? []);
+                      if (participants.contains(selectedUserId)) {
+                        chatId = doc.id;
+                        break;
+                      }
+                    }
+                    if (chatId == null) {
+                      final newChat = await FirebaseFirestore.instance.collection('chats').add({
+                        'participants': [currentUserId, selectedUserId],
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      });
+                      chatId = newChat.id;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatConversationPage(
+                          chatId: chatId!,
+                          currentUserId: currentUserId!,
+                          otherUserId: selectedUserId,
+                        ),
+                      ),
+                    );
+                  }
+                },
               ),
             ],
           ),

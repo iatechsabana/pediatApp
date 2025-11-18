@@ -27,11 +27,19 @@ class Message {
 
   factory Message.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
+    DateTime sentAt;
+    if (data['sentAt'] is Timestamp) {
+      sentAt = (data['sentAt'] as Timestamp).toDate();
+    } else if (data['sentAt'] is DateTime) {
+      sentAt = data['sentAt'] as DateTime;
+    } else {
+      sentAt = DateTime.now();
+    }
     return Message(
       id: doc.id,
       senderId: data['senderId'] ?? '',
       text: data['text'] ?? '',
-      sentAt: (data['sentAt'] as Timestamp).toDate(),
+      sentAt: sentAt,
     );
   }
 }
