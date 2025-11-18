@@ -38,7 +38,19 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
       return (doc.data()?['credits'] ?? 0) as int;
     }
   bool isEditingAbout = false;
-  final aboutController = TextEditingController();
+  late TextEditingController aboutController;
+
+  @override
+  void initState() {
+    super.initState();
+    aboutController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    aboutController.dispose();
+    super.dispose();
+  }
 
   Future<Map<String, dynamic>?> _getProfile() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -70,14 +82,24 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
           return SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 32),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(data),
+                const SizedBox(height: 18),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: _buildStatsSection(),
+                ),
                 const SizedBox(height: 24),
-                _buildStatsSection(),
-                const SizedBox(height: 30),
-                _buildAboutSection(data),
-                const SizedBox(height: 20),
-                _buildActions(context),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: _buildAboutSection(data),
+                ),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: _buildActions(context),
+                ),
               ],
             ),
           );
@@ -90,7 +112,7 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
   Widget _buildHeader(Map<String, dynamic> data) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 36, 16, 32),
+      padding: const EdgeInsets.fromLTRB(0, 36, 0, 32),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFBDEEE6), Color(0xFF1ABC9C)],
@@ -98,35 +120,44 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Stack(
             alignment: Alignment.bottomRight,
             children: [
-              data['photoUrl'] != null && data['photoUrl'].toString().isNotEmpty
-                  ? CircleAvatar(
-                      radius: 44,
-                      backgroundImage: NetworkImage(data['photoUrl']),
-                      backgroundColor: Colors.white,
-                    )
-                  : CircleAvatar(
-                      radius: 44,
-                      backgroundColor: Colors.white,
-                      backgroundImage: const AssetImage('assets/images/doctorkids_logo.png'),
-                    ),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white, width: 4),
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
+                ),
+                child: data['photoUrl'] != null && data['photoUrl'].toString().isNotEmpty
+                    ? CircleAvatar(
+                        radius: 54,
+                        backgroundImage: NetworkImage(data['photoUrl']),
+                        backgroundColor: Colors.white,
+                      )
+                    : CircleAvatar(
+                        radius: 54,
+                        backgroundColor: Colors.white,
+                        backgroundImage: const AssetImage('assets/images/doctorkids_logo.png'),
+                      ),
+              ),
               _editAvatarButton(),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Text(
             data['name'] ?? '',
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Colors.white,
               fontFamily: 'Montserrat',
+              letterSpacing: 0.5,
               shadows: [
                 Shadow(
                   color: Colors.black38,
@@ -136,7 +167,18 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          Text(
+            data['specialty'] ?? '',
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Montserrat',
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
           Text(
             data['email'] ?? '',
             style: const TextStyle(
@@ -154,7 +196,7 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           _buildHeaderInfoIcons(data),
         ],
       ),
@@ -216,36 +258,53 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
       builder: (context, snapshot) {
         final values = snapshot.data ?? [0, 0, 0];
         return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _statBox(Icons.groups, "Comunidad", values[0].toString()),
-            _statBox(Icons.comment, "Comentarios", values[1].toString()),
-            _statBox(Icons.monetization_on, "Créditos", values[2].toString()),
+            _statCard(Icons.groups, "Comunidad", values[0].toString(), Colors.teal.shade100),
+            _statCard(Icons.comment, "Comentarios", values[1].toString(), Colors.orange.shade100),
+            _statCard(Icons.monetization_on, "Créditos", values[2].toString(), Colors.purple.shade100),
           ],
         );
       },
     );
+
   }
 
-  Widget _statBox(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: Colors.teal.shade50,
-          child: Icon(icon, color: Colors.teal),
-        ),
-        const SizedBox(height: 6),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
-      ],
+  Widget _statCard(IconData icon, String label, String value, Color color) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: Colors.white,
+            child: Icon(icon, color: Colors.teal, size: 26),
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        ],
+      ),
     );
   }
 
+
   // 🔹 SOBRE MÍ
   Widget _buildAboutSection(Map<String, dynamic> data) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -275,7 +334,7 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
           decoration: InputDecoration(
             hintText: "Escribe algo sobre ti...",
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Colors.teal.shade50,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),

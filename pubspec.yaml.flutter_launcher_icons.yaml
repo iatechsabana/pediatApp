@@ -1,0 +1,7 @@
+# Use this config to generate adaptive launcher icons for Android with your logo
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/doctorkids_logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/doctorkids_logo.png"
