@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import '../../../assistant/presentation/pages/assistant_page.dart';
+import '../../../chat/presentation/chat_pages.dart';
 import 'medical_history_page.dart';
 import 'family_core_page.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -33,6 +34,13 @@ class _DashboardPageState extends State<DashboardPage> {
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AssistantPage())),
             icon: const Icon(Icons.chat_bubble_outline),
             tooltip: 'Asistente pediátrico',
+          ),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ChatListPage()),
+            ),
+            icon: const Icon(Icons.chat, color: Colors.teal, size: 26),
+            tooltip: 'Chat entre colegas',
           ),
         ],
       ),

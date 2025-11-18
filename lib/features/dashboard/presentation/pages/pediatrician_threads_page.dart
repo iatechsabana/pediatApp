@@ -1,3 +1,4 @@
+import '../../../chat/presentation/chat_pages.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -347,6 +348,7 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
 
                                 IconButton(
                                   icon: const Icon(Icons.add_comment_outlined, color: Colors.teal),
+                                  tooltip: 'Ver comentarios',
                                   onPressed: () {
                                     Navigator.push(
                                       context,
@@ -361,7 +363,49 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                       ),
                                     );
                                   },
-                                )
+                                ),
+                                if (!isOwn)
+                                  IconButton(
+                                    icon: const Icon(Icons.chat, color: Colors.teal),
+                                    tooltip: 'Chatear con el autor',
+                                    onPressed: () async {
+                                      final currentUserId = user?.uid;
+                                      final authorId = data['authorId'];
+                                      if (currentUserId != null && authorId != null && currentUserId != authorId) {
+                                        // Importar ChatListPage y lógica de chat
+                                        // Buscar o crear chat y navegar
+                                        final chatsRef = FirebaseFirestore.instance.collection('chats');
+                                        final existing = await chatsRef
+                                            .where('participants', arrayContains: currentUserId)
+                                            .get();
+                                        String? chatId;
+                                        for (final doc in existing.docs) {
+                                          final participants = List<String>.from(doc['participants'] ?? []);
+                                          if (participants.contains(authorId) && participants.length == 2) {
+                                            chatId = doc.id;
+                                            break;
+                                          }
+                                        }
+                                        if (chatId == null) {
+                                          final newChat = await chatsRef.add({
+                                            'participants': [currentUserId, authorId],
+                                            'createdAt': FieldValue.serverTimestamp(),
+                                          });
+                                          chatId = newChat.id;
+                                        }
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ChatConversationPage(
+                                              chatId: chatId!,
+                                              currentUserId: currentUserId,
+                                              otherUserId: authorId,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
                               ],
                             ),
                           ],

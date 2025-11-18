@@ -1,0 +1,213 @@
+import 'user_select_page.dart';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../data/chat_models.dart';
+
+class ChatListPage extends StatelessWidget {
+  const ChatListPage({super.key});
+
+  Future<void> _startChat(BuildContext context, String currentUserId, String otherUserId) async {
+    final chatsRef = FirebaseFirestore.instance.collection('chats');
+    final existing = await chatsRef
+        .where('participants', arrayContains: currentUserId)
+        .get();
+    String? chatId;
+    for (final doc in existing.docs) {
+      final participants = List<String>.from(doc['participants'] ?? []);
+      if (participants.contains(otherUserId) && participants.length == 2) {
+        chatId = doc.id;
+        break;
+      }
+    }
+    if (chatId == null) {
+      final newChat = await chatsRef.add({
+        'participants': [currentUserId, otherUserId],
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      chatId = newChat.id;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatConversationPage(chatId: chatId!, currentUserId: currentUserId, otherUserId: otherUserId),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text('No autenticado')),
+      );
+    }
+    final currentUserId = user.uid;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Chats entre colegas'), backgroundColor: Colors.teal),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('chats')
+            .where('participants', arrayContains: currentUserId)
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final chats = snapshot.data?.docs ?? [];
+          return ListView(
+            children: [
+              ...chats.map((doc) {
+                final chat = Chat.fromDoc(doc);
+                final otherUserId = chat.participants.firstWhere((id) => id != currentUserId, orElse: () => '');
+                return ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.person)),
+                  title: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
+                    builder: (context, userSnap) {
+                      if (!userSnap.hasData || !userSnap.data!.exists) return const Text('Usuario');
+                      final user = userSnap.data!.data()!;
+                      return Text(user['name'] ?? 'Usuario');
+                    },
+                  ),
+                  subtitle: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('chats')
+                        .doc(chat.id)
+                        .collection('messages')
+                        .orderBy('sentAt', descending: true)
+                        .limit(1)
+                        .snapshots(),
+                    builder: (context, msgSnap) {
+                      if (!msgSnap.hasData || msgSnap.data!.docs.isEmpty) return const Text('Sin mensajes');
+                      final lastMsg = msgSnap.data!.docs.first.data();
+                      return Text(lastMsg['text'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis);
+                    },
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatConversationPage(chatId: chat.id, currentUserId: currentUserId, otherUserId: otherUserId),
+                      ),
+                    );
+                  },
+                );
+              }).toList(),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.add_comment, color: Colors.teal),
+                title: const Text('Iniciar chat con colega'),
+                onTap: () async {
+                  final selectedUserId = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UserSelectPage()),
+                  );
+                  if (selectedUserId != null && selectedUserId != currentUserId) {
+                    _startChat(context, currentUserId, selectedUserId);
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ChatConversationPage extends StatefulWidget {
+  final String chatId;
+  final String currentUserId;
+  final String otherUserId;
+  const ChatConversationPage({super.key, required this.chatId, required this.currentUserId, required this.otherUserId});
+
+  @override
+  State<ChatConversationPage> createState() => _ChatConversationPageState();
+}
+
+class _ChatConversationPageState extends State<ChatConversationPage> {
+  final TextEditingController _controller = TextEditingController();
+
+  void _sendMessage() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    await FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .collection('messages')
+        .add({
+      'senderId': widget.currentUserId,
+      'text': text,
+      'sentAt': FieldValue.serverTimestamp(),
+    });
+    // Actualiza el campo updatedAt del chat para ordenarlo por último mensaje
+    await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).update({
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Conversación'), backgroundColor: Colors.teal),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('chats')
+                  .doc(widget.chatId)
+                  .collection('messages')
+                  .orderBy('sentAt')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final messages = snapshot.data!.docs;
+                return ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: messages.map((doc) {
+                    final msg = Message.fromDoc(doc);
+                    final isMe = msg.senderId == widget.currentUserId;
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.teal.shade100 : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(msg.text),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(hintText: 'Escribe un mensaje...'),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.teal),
+                  onPressed: _sendMessage,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
