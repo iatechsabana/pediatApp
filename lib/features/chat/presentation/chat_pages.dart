@@ -1,8 +1,9 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'user_select_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../data/chat_models.dart';
+import '../data/chat_models.dart' as chat_models;
 
 class ChatListPage extends StatelessWidget {
   const ChatListPage({super.key});
@@ -60,7 +61,7 @@ class ChatListPage extends StatelessWidget {
           return ListView(
             children: [
               ...chats.map((doc) {
-                final chat = Chat.fromDoc(doc);
+                final chat = chat_models.Chat.fromDoc(doc);
                 final otherUserId = chat.participants.firstWhere((id) => id != currentUserId, orElse: () => '');
                 return ListTile(
                   leading: const CircleAvatar(child: Icon(Icons.person)),
@@ -119,6 +120,7 @@ class ChatListPage extends StatelessWidget {
 }
 
 class ChatConversationPage extends StatefulWidget {
+    static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
   final String chatId;
   final String currentUserId;
   final String otherUserId;
@@ -129,6 +131,37 @@ class ChatConversationPage extends StatefulWidget {
 }
 
 class _ChatConversationPageState extends State<ChatConversationPage> {
+    @override
+    void initState() {
+      super.initState();
+      _initNotifications();
+    }
+
+    Future<void> _initNotifications() async {
+      // Usa el logo de la app como icono de notificación
+      const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+      await ChatConversationPage._notificationsPlugin.initialize(initializationSettings);
+    }
+
+    Future<void> _showNotification(String sender, String message) async {
+      const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'chat_channel',
+        'Chat entre colegas',
+        channelDescription: 'Notificaciones claras de mensajes entre pediatras',
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'ticker',
+        icon: '@mipmap/ic_launcher', // Asegura el logo de la app
+      );
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+      await ChatConversationPage._notificationsPlugin.show(
+        0,
+        'Nuevo mensaje de $sender',
+        message,
+        platformChannelSpecifics,
+      );
+    }
   final TextEditingController _controller = TextEditingController();
 
   void _sendMessage() async {
@@ -167,10 +200,22 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!.docs;
+                // Detectar mensaje entrante
+                if (messages.isNotEmpty) {
+                  final lastMsg = chat_models.Message.fromDoc(messages.last);
+                  final isMe = lastMsg.senderId == widget.currentUserId;
+                  if (!isMe) {
+                    // Buscar nombre del remitente
+                    FirebaseFirestore.instance.collection('users').doc(lastMsg.senderId).get().then((userDoc) {
+                      final senderName = userDoc.data()?['name'] ?? 'Colega';
+                      _showNotification(senderName, lastMsg.text);
+                    });
+                  }
+                }
                 return ListView(
                   padding: const EdgeInsets.all(12),
                   children: messages.map((doc) {
-                    final msg = Message.fromDoc(doc);
+                    final msg = chat_models.Message.fromDoc(doc);
                     final isMe = msg.senderId == widget.currentUserId;
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
