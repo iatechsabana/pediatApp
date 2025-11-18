@@ -126,30 +126,50 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Encabezado
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppDimens.paddingSmall),
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.inputFill,
-                          ),
-                          child: const Icon(Icons.local_hospital_rounded, size: AppDimens.iconSizeXLarge, color: AppColors.inputIcon),
-                        ),
-                        const SizedBox(width: AppDimens.paddingMedium),
-                        const Expanded(
-                          child: Text(
-                            'Bienvenido de nuevo',
-                            style: AppTextStyles.heading2White,
-                          ),
-                        ),
-                      ],
+                    // Logo y título
+                    const SizedBox(height: 10),
+                    Image.asset(
+                      'assets/images/doctorkids_logo.png',
+                      height: 170,
+                      fit: BoxFit.contain,
                     ),
-
-                    const SizedBox(height: AppDimens.paddingXLarge),
-
-                    Text('Inicia sesión para continuar', style: AppTextStyles.subtitle2White),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Bienvenido de nuevo',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontFamily: 'Montserrat',
+                        shadows: [
+                          Shadow(
+                            color: Colors.black38,
+                            offset: Offset(0, 2),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppDimens.paddingSmall),
+                    const Text(
+                      'Inicia sesión para continuar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Montserrat',
+                        letterSpacing: 0.2,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black26,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: AppDimens.paddingXLarge),
 
                     Form(

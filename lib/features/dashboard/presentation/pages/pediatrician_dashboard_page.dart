@@ -31,7 +31,7 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
         final int pendientes = data?['pending'] ?? 0;
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFBDEEE6), Color(0xFF1ABC9C)],
@@ -48,14 +48,20 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
             ],
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: Colors.white,
-                child: const Icon(Icons.person, size: 38, color: Colors.teal),
-              ),
-              const SizedBox(width: 18),
+              (data != null && data['photoUrl'] != null && data['photoUrl'].toString().isNotEmpty)
+                  ? CircleAvatar(
+                      radius: 28,
+                      backgroundImage: NetworkImage(data['photoUrl']),
+                      backgroundColor: Colors.white,
+                    )
+                  : CircleAvatar(
+                      radius: 28,
+                      backgroundColor: Colors.white,
+                      backgroundImage: const AssetImage('assets/images/doctorkids_logo.png'),
+                    ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,34 +69,34 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
                     Text(
                       nombre,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.teal,
                         fontFamily: 'Roboto',
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     const Text(
                       'Pediatra',
-                      style: TextStyle(fontSize: 15, color: Colors.black54, fontFamily: 'Roboto'),
+                      style: TextStyle(fontSize: 13, color: Colors.black54, fontFamily: 'Roboto'),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.monetization_on, color: Colors.amber, size: 20),
-                        const SizedBox(width: 4),
-                        Text('$creditos créditos', style: const TextStyle(fontWeight: FontWeight.w500)),
-                        const SizedBox(width: 16),
-                        Icon(Icons.pending_actions, color: Colors.orange, size: 20),
-                        const SizedBox(width: 4),
-                        Text('$pendientes pendientes', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Icon(Icons.monetization_on, color: Colors.amber, size: 18),
+                        const SizedBox(width: 3),
+                        Text('$creditos créditos', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                        const SizedBox(width: 10),
+                        Icon(Icons.pending_actions, color: Colors.orange, size: 18),
+                        const SizedBox(width: 3),
+                        Text('$pendientes pendientes', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
                       ],
                     ),
                   ],
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.chat, color: Colors.teal, size: 30),
+                icon: const Icon(Icons.chat, color: Colors.teal, size: 26),
                 tooltip: 'Chat entre colegas',
                 onPressed: () {},
               ),

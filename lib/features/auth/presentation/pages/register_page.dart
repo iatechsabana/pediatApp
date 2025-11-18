@@ -226,11 +226,50 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const SizedBox(height: 10),
+                      // Logo de la app
+                      Image.asset(
+                        'assets/images/doctorkids_logo.png',
+                        height: 170,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Crear cuenta',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'Montserrat',
+                          shadows: [
+                            Shadow(
+                              color: Colors.black38,
+                              offset: Offset(0, 2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: AppDimens.paddingSmall),
-                      const Text('Crear cuenta', style: AppTextStyles.heading3White),
-                      const SizedBox(height: AppDimens.paddingSmall),
-                      const Text('Elige tipo de cuenta y completa los datos', style: AppTextStyles.subtitle2White),
-
+                      const Text(
+                        'Elige tipo de cuenta y completa los datos',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Montserrat',
+                          letterSpacing: 0.2,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black26,
+                              offset: Offset(0, 1),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: AppDimens.paddingLarge),
                       // Account type toggle
                       Row(

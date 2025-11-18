@@ -1,3 +1,10 @@
+// Asegúrate de que ThreadCommentsPage acepte threadId y threadData en su constructor:
+// class ThreadCommentsPage extends StatelessWidget {
+//   final String threadId;
+//   final Map<String, dynamic> threadData;
+//   const ThreadCommentsPage({Key? key, required this.threadId, required this.threadData}) : super(key: key);
+//   ...
+// }
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -209,6 +216,17 @@ class _ThreadCommentsPageState extends State<ThreadCommentsPage> {
                     final c = comments[i].data() as Map<String, dynamic>;
                     final isOwner = c['authorId'] == _userId;
                     return ListTile(
+                      leading: c['authorPhotoUrl'] != null && c['authorPhotoUrl'].toString().isNotEmpty
+                          ? CircleAvatar(
+                              radius: 18,
+                              backgroundImage: NetworkImage(c['authorPhotoUrl']),
+                              backgroundColor: Colors.teal.shade200,
+                            )
+                          : CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.teal.shade200,
+                              backgroundImage: const AssetImage('assets/images/doctorkids_logo.png'),
+                            ),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       tileColor: Colors.teal.shade50,
                       title: Text(c['authorName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),

@@ -146,14 +146,30 @@ class AppTextStyles {
 
   // Form field text
   static const formFieldText = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    color: AppColors.textWhite,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    color: Colors.white,
+    letterSpacing: 0.2,
+    shadows: [
+      Shadow(
+        color: Color(0x66000000),
+        offset: Offset(0, 1),
+        blurRadius: 2,
+      ),
+    ],
   );
 
   static const formFieldHint = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    color: AppColors.inputHint,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: Color(0xE6FFFFFF), // blanco con más opacidad
+    letterSpacing: 0.2,
+    shadows: [
+      Shadow(
+        color: Color(0x33000000),
+        offset: Offset(0, 1),
+        blurRadius: 1,
+      ),
+    ],
   );
 }
