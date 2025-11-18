@@ -176,6 +176,7 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                     future: FirebaseFirestore.instance.collection('users').doc(data['authorId']).get(),
                                     builder: (context, userSnap) {
                                       final isOnline = userSnap.hasData && userSnap.data != null && userSnap.data!.data()?['online'] == true;
+                                      final isCurrentUser = user != null && data['authorId'] == user.uid;
                                       return Row(
                                         children: [
                                           Stack(
@@ -187,19 +188,20 @@ class _PediatricianThreadsPageState extends State<PediatricianThreadsPage> {
                                                     ? NetworkImage(avatarUrl)
                                                     : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
                                               ),
-                                              Positioned(
-                                                bottom: 0,
-                                                right: 0,
-                                                child: Container(
-                                                  width: 14,
-                                                  height: 14,
-                                                  decoration: BoxDecoration(
-                                                    color: isOnline ? Colors.green : Colors.grey,
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(color: Colors.white, width: 2),
+                                              if (!isCurrentUser)
+                                                Positioned(
+                                                  bottom: 0,
+                                                  right: 0,
+                                                  child: Container(
+                                                    width: 14,
+                                                    height: 14,
+                                                    decoration: BoxDecoration(
+                                                      color: isOnline ? Colors.green : Colors.grey,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.white, width: 2),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
                                             ],
                                           ),
                                           const SizedBox(width: 12),

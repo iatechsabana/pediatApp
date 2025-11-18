@@ -15,7 +15,7 @@ class UserSelectPage extends StatelessWidget {
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final users = snapshot.data!.docs.where((u) => u.id != currentUserId).toList();
+          final users = snapshot.data!.docs.where((u) => u.id != currentUserId && (u.data()['online'] == true)).toList();
           if (users.isEmpty) return const Center(child: Text('No hay otros usuarios.'));
           return ListView.separated(
             itemCount: users.length,
