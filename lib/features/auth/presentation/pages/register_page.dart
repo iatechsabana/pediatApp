@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_dimens.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/constants/app_config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
+import '../../../../core/utils/document_picker_stub.dart';
+import 'dart:typed_data';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_dimens.dart';
+import '../../../../core/constants/app_config.dart';
+import '../../../../core/constants/app_text_styles.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -17,13 +20,31 @@ class RegisterPage extends StatefulWidget {
 enum AccountType { user, pediatrician }
 
 class _RegisterPageState extends State<RegisterPage> {
+  int _step = 0;
+
+  // Documentos
+  List<String> _documents = [];
+
+  // Agrega variables para el archivo seleccionado
+  String? _selectedFileName;
+  Uint8List? _selectedFileBytes;
+
+  void _nextStep() {
+    if (_step < 2) setState(() => _step++);
+  }
+
+  void _prevStep() {
+    if (_step > 0) setState(() => _step--);
+  }
+
   final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
 
-  // Pediatrician extra fields
+  // Pediatrician
   final _clinicController = TextEditingController();
   final _licenseController = TextEditingController();
   final _specialtyController = TextEditingController();
@@ -31,6 +52,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _experienceController = TextEditingController();
 
   AccountType _accountType = AccountType.user;
+
   bool _isLoading = false;
   bool _obscure = true;
 
@@ -40,32 +62,38 @@ class _RegisterPageState extends State<RegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
+
     _clinicController.dispose();
     _licenseController.dispose();
     _specialtyController.dispose();
     _addressController.dispose();
     _experienceController.dispose();
+
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
+
     try {
-      // 1. Crear usuario en Firebase Auth
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      // Crear usuario
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // 2. Preparar datos para Firestore
-      final data = {
+      // Datos para Firestore
+      final Map<String, dynamic> data = {
         'uid': credential.user?.uid,
         'type': _accountType == AccountType.user ? 'usuario' : 'pediatra',
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
       };
+
       if (_accountType == AccountType.pediatrician) {
         data.addAll({
           'clinic': _clinicController.text.trim(),
@@ -73,125 +101,123 @@ class _RegisterPageState extends State<RegisterPage> {
           'specialty': _specialtyController.text.trim(),
           'address': _addressController.text.trim(),
           'experience': _experienceController.text.trim(),
+          'documents': _documents,
         });
       }
 
-      // 3. Guardar datos en Firestore
-      await FirebaseFirestore.instance.collection('users').doc(credential.user?.uid).set(data);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(credential.user!.uid)
+          .set(data);
 
       if (!mounted) return;
+
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Registro exitoso: ${data['type']} - ${data['email']}'),
-        duration: AppConfig.snackbarDuration,
-      ));
-      // Redirigir al login después de registro exitoso
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text("Registro exitoso: ${data['type']} - ${data['email']}"),
+          duration: AppConfig.snackbarDuration,
+        ),
+      );
+
       await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        Navigator.of(context).pop(); // Vuelve a la pantalla anterior (login)
-      }
-    } on FirebaseAuthException catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error: ${e.message}'),
-        duration: AppConfig.errorSnackbarDuration,
-      ));
+      if (mounted) Navigator.pop(context);
+
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error inesperado: $e'),
-        duration: AppConfig.errorSnackbarDuration,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          duration: AppConfig.errorSnackbarDuration,
+        ),
+      );
     }
+  }
+
+  Future<void> _pickAndUploadDocument() async {
+    final picked = await pickDocument();
+    if (picked == null) return;
+    final fileName = picked.name;
+    final fileBytes = picked.bytes;
+    final maxSize = 5 * 1024 * 1024; // 5MB
+    if (fileBytes.length > maxSize) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El archivo supera el límite de 5MB o es inválido')));
+      return;
+    }
+    final storageRef = FirebaseStorage.instance.ref().child('certifications/${DateTime.now().millisecondsSinceEpoch}_$fileName');
+    await storageRef.putData(fileBytes);
+    final url = await storageRef.getDownloadURL();
+    setState(() => _documents.add(url));
+    setState(() {
+      _selectedFileName = fileName;
+      _selectedFileBytes = fileBytes;
+    });
   }
 
   Widget _pediatricianFields() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _clinicController,
           style: AppTextStyles.formFieldText,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.inputFill,
-            hintText: 'Nombre de la clínica',
-            hintStyle: AppTextStyles.formFieldHint,
-            prefixIcon: const Icon(Icons.location_city, color: AppColors.inputIcon),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-          ),
+          decoration: _input("Nombre de la clínica", Icons.location_city),
           validator: (v) {
-            if (_accountType == AccountType.pediatrician && (v == null || v.isEmpty)) return 'Ingresa el nombre de la clínica';
+            if (v == null || v.isEmpty) return 'Ingresa el nombre de la clínica';
             return null;
           },
         ),
-
         const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _licenseController,
           style: AppTextStyles.formFieldText,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.inputFill,
-            hintText: 'Número de licencia profesional',
-            hintStyle: AppTextStyles.formFieldHint,
-            prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.inputIcon),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-          ),
+          decoration: _input("Número de licencia", Icons.badge_outlined),
           validator: (v) {
-            if (_accountType == AccountType.pediatrician && (v == null || v.isEmpty)) return 'Ingresa número de licencia';
+            if (v == null || v.isEmpty) return 'Ingresa la licencia';
             return null;
           },
         ),
-
         const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _specialtyController,
           style: AppTextStyles.formFieldText,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.inputFill,
-            hintText: 'Especialidad (p. ej. Neonatología)',
-            hintStyle: AppTextStyles.formFieldHint,
-            prefixIcon: const Icon(Icons.medical_services_outlined, color: AppColors.inputIcon),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-          ),
+          decoration: _input("Especialidad", Icons.medical_services_outlined),
           validator: (v) {
-            if (_accountType == AccountType.pediatrician && (v == null || v.isEmpty)) return 'Ingresa especialidad';
+            if (v == null || v.isEmpty) return 'Ingresa una especialidad';
             return null;
           },
         ),
-
         const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _addressController,
           style: AppTextStyles.formFieldText,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.inputFill,
-            hintText: 'Dirección de trabajo',
-            hintStyle: AppTextStyles.formFieldHint,
-            prefixIcon: const Icon(Icons.map_outlined, color: AppColors.inputIcon),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-          ),
+          decoration: _input("Dirección de trabajo", Icons.map_outlined),
         ),
-
         const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
           controller: _experienceController,
-          keyboardType: TextInputType.number,
           style: AppTextStyles.formFieldText,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.inputFill,
-            hintText: 'Años de experiencia',
-            hintStyle: AppTextStyles.formFieldHint,
-            prefixIcon: const Icon(Icons.schedule, color: AppColors.inputIcon),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-          ),
+          keyboardType: TextInputType.number,
+          decoration: _input("Años de experiencia", Icons.schedule),
         ),
       ],
+    );
+  }
+
+  InputDecoration _input(String hint, IconData icon) {
+    return InputDecoration(
+      filled: true,
+      fillColor: AppColors.inputFill,
+      hintText: hint,
+      hintStyle: AppTextStyles.formFieldHint,
+      prefixIcon: Icon(icon, color: AppColors.inputIcon),
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingLarge, vertical: AppDimens.verticalPadding),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge),
+        borderSide: BorderSide.none,
+      ),
     );
   }
 
@@ -202,38 +228,31 @@ class _RegisterPageState extends State<RegisterPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        title: const Text('Registro'),
-        elevation: 0,
+        title: const Text("Registro"),
       ),
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
+            colors: [AppColors.primaryLight, AppColors.primary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.primaryLight, AppColors.primary],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingXLarge, vertical: AppDimens.paddingXLarge),
+              padding: const EdgeInsets.all(AppDimens.paddingXLarge),
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: mq.width > AppDimens.maxContentWidth ? AppDimens.maxContentWidth : mq.width),
+                constraints: BoxConstraints(
+                  maxWidth: mq.width > 500 ? 500 : mq.width,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: 10),
-                      // Logo de la app
-                      Image.asset(
-                        'assets/images/doctorkids_logo.png',
-                        height: 170,
-                        fit: BoxFit.contain,
-                      ),
+                      Image.asset('assets/images/doctorkids_logo.png', height: 170),
                       const SizedBox(height: 18),
+
                       const Text(
                         'Crear cuenta',
                         style: TextStyle(
@@ -251,156 +270,88 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: AppDimens.paddingSmall),
-                      const Text(
-                        'Elige tipo de cuenta y completa los datos',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Montserrat',
-                          letterSpacing: 0.2,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black26,
-                              offset: Offset(0, 1),
-                              blurRadius: 2,
-                            ),
+
+                      const SizedBox(height: 18),
+
+                      // Tipo de cuenta
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: ToggleButtons(
+                          borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
+                          borderColor: AppColors.primary,
+                          selectedBorderColor: AppColors.primary,
+                          fillColor: AppColors.primary,
+                          selectedColor: Colors.white,
+                          color: AppColors.primary,
+                          constraints: const BoxConstraints(minWidth: 120, minHeight: 40),
+                          isSelected: [
+                            _accountType == AccountType.user,
+                            _accountType == AccountType.pediatrician,
+                          ],
+                          onPressed: (index) {
+                            setState(() {
+                              _accountType = index == 0 ? AccountType.user : AccountType.pediatrician;
+                              _step = 0;
+                            });
+                          },
+                          children: const [
+                            Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', fontSize: 16)),
+                            Text('Pediatra', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', fontSize: 16)),
                           ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: AppDimens.paddingLarge),
-                      // Account type toggle
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _accountType = AccountType.user),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: AppDimens.paddingMedium),
-                                decoration: BoxDecoration(
-                                  color: _accountType == AccountType.user ? AppColors.inputFill : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium),
-                                  border: Border.all(color: AppColors.inputFillDark),
+
+                      const SizedBox(height: 18),
+
+                      // Formulario Usuario
+                      if (_accountType == AccountType.user) ...[
+                        _fieldName(),
+                        _fieldEmail(),
+                        _fieldPassword(),
+                        _fieldPhone(),
+                        const SizedBox(height: 20),
+                        _submitButton("Registrar"),
+                      ],
+
+                      // Formulario Pediatra por pasos
+                      if (_accountType == AccountType.pediatrician) ...[
+                        _step == 0 ? _stepP1() : const SizedBox(),
+                        _step == 1 ? _pediatricianFields() : const SizedBox(),
+                        _step == 2 ? _stepP3() : const SizedBox(),
+
+                        const SizedBox(height: 20),
+
+                        // Botones navegación
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (_step > 0)
+                              ElevatedButton.icon(
+                                onPressed: _prevStep,
+                                icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+                                label: const Text("Anterior", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', color: AppColors.primary)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.textWhite,
+                                  foregroundColor: AppColors.primary,
+                                  elevation: AppDimens.elevationMedium,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
                                 ),
-                                child: const Center(child: Text('Usuario', style: AppTextStyles.subtitle2White)),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: AppDimens.paddingMedium),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _accountType = AccountType.pediatrician),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: AppDimens.paddingMedium),
-                                decoration: BoxDecoration(
-                                  color: _accountType == AccountType.pediatrician ? AppColors.inputFill : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium),
-                                  border: Border.all(color: AppColors.inputFillDark),
+                            if (_step < 2)
+                              ElevatedButton.icon(
+                                onPressed: _nextStep,
+                                icon: const Icon(Icons.arrow_forward, color: AppColors.primary),
+                                label: const Text("Siguiente", style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', color: AppColors.primary)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.textWhite,
+                                  foregroundColor: AppColors.primary,
+                                  elevation: AppDimens.elevationMedium,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
                                 ),
-                                child: const Center(child: Text('Pediatra', style: AppTextStyles.subtitle2White)),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: AppDimens.paddingLarge),
-
-                      // Common fields
-                      TextFormField(
-                        controller: _nameController,
-                        style: AppTextStyles.formFieldText,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: AppColors.inputFill,
-                          hintText: 'Nombre completo',
-                          hintStyle: AppTextStyles.formFieldHint,
-                          prefixIcon: const Icon(Icons.person_outline, color: AppColors.inputIcon),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
+                          ],
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Ingresa tu nombre' : null,
-                      ),
-
-                      const SizedBox(height: AppDimens.paddingMedium),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        style: AppTextStyles.formFieldText,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: AppColors.inputFill,
-                          hintText: 'tucorreo@ejemplo.com',
-                          hintStyle: AppTextStyles.formFieldHint,
-                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.inputIcon),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Ingresa tu email';
-                          if (!v.contains('@')) return 'Email inválido';
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: AppDimens.paddingMedium),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscure,
-                        style: AppTextStyles.formFieldText,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: AppColors.inputFill,
-                          hintText: 'Contraseña',
-                          hintStyle: AppTextStyles.formFieldHint,
-                          prefixIcon: const Icon(Icons.lock_outline, color: AppColors.inputIcon),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: AppColors.inputIcon),
-                            onPressed: () => setState(() => _obscure = !_obscure),
-                          ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Ingresa tu contraseña';
-                          if (v.length < AppConfig.minPasswordLength) return 'Mínimo ${AppConfig.minPasswordLength} caracteres';
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: AppDimens.paddingMedium),
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        style: AppTextStyles.formFieldText,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: AppColors.inputFill,
-                          hintText: 'Teléfono (opcional)',
-                          hintStyle: AppTextStyles.formFieldHint,
-                          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.inputIcon),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), borderSide: BorderSide.none),
-                        ),
-                      ),
-
-                      // Pediatrician extra fields
-                      if (_accountType == AccountType.pediatrician) _pediatricianFields(),
-
-                      const SizedBox(height: AppDimens.paddingXLarge),
-                      SizedBox(
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.textWhite,
-                            foregroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge)),
-                          ),
-                          child: _isLoading ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)) : const Text('Crear cuenta', style: AppTextStyles.buttonText),
-                        ),
-                      ),
-
-                      const SizedBox(height: AppDimens.paddingMedium),
-                      const Center(child: Text('Al registrarte aceptas los términos', style: AppTextStyles.captionWhite)),
+                      ],
                     ],
                   ),
                 ),
@@ -409,6 +360,159 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // -----------------------------
+  // CAMPOS REUTILIZABLES
+  // -----------------------------
+
+  Widget _fieldName() => TextFormField(
+        controller: _nameController,
+        style: AppTextStyles.formFieldText,
+        decoration: _input("Nombre completo", Icons.person),
+        validator: (v) => v!.isEmpty ? "Ingresa tu nombre" : null,
+      );
+
+  Widget _fieldEmail() => TextFormField(
+        controller: _emailController,
+        style: AppTextStyles.formFieldText,
+        decoration: _input("Correo electrónico", Icons.email),
+        validator: (v) => v!.contains("@") ? null : "Correo inválido",
+      );
+
+  Widget _fieldPassword() => TextFormField(
+        controller: _passwordController,
+        obscureText: _obscure,
+        style: AppTextStyles.formFieldText,
+        decoration: _input("Contraseña", Icons.lock).copyWith(
+          suffixIcon: IconButton(
+            icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off, color: AppColors.inputIcon),
+            onPressed: () => setState(() => _obscure = !_obscure),
+          ),
+        ),
+        validator: (v) => v!.length < 6 ? "Mínimo 6 caracteres" : null,
+      );
+
+  Widget _fieldPhone() => TextFormField(
+        controller: _phoneController,
+        style: AppTextStyles.formFieldText,
+        decoration: _input("Teléfono", Icons.phone),
+        validator: (v) => v!.isEmpty ? "Ingresa tu teléfono" : null,
+      );
+
+  Widget _submitButton(String text) => SizedBox(
+        height: AppDimens.buttonHeight,
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.textWhite,
+            foregroundColor: AppColors.primary,
+            elevation: AppDimens.elevationLarge,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
+          ),
+          child: _isLoading
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+            : Text(text, style: AppTextStyles.buttonText),
+        ),
+      );
+
+  // -----------------------------
+  // PASOS FORMULARIO PEDIATRA
+  // -----------------------------
+
+  Widget _stepP1() {
+    return Column(
+      children: [
+        _fieldName(),
+        _fieldEmail(),
+        _fieldPassword(),
+        _fieldPhone(),
+        const SizedBox(height: AppDimens.paddingMedium),
+      ],
+    );
+  }
+
+  Widget _stepP3() {
+    return Column(
+      children: [
+        const Text(
+          "Documentos de certificación",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Montserrat', shadows: [Shadow(color: Colors.black38, offset: Offset(0, 2), blurRadius: 4)]),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 10),
+        if (_selectedFileName != null) ...[
+          Card(
+            color: AppColors.inputFill,
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              leading: const Icon(Icons.insert_drive_file, color: AppColors.inputIcon, size: 20),
+              title: Text(
+                _selectedFileName!,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Montserrat',
+                  overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 1,
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                onPressed: () => setState(() {
+                  _selectedFileName = null;
+                  _selectedFileBytes = null;
+                }),
+              ),
+            ),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.cloud_upload, color: AppColors.inputIcon),
+            label: Text("Subir documento", style: AppTextStyles.buttonText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.textWhite,
+              foregroundColor: AppColors.primary,
+              elevation: AppDimens.elevationLarge,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
+            ),
+            onPressed: () {
+              if (_selectedFileName != null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona y sube un archivo primero')));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona un archivo primero')));
+              }
+            },
+          ),
+        ] else ...[
+          ElevatedButton.icon(
+            icon: const Icon(Icons.upload_file, color: AppColors.inputIcon),
+            label: Text("Seleccionar documento", style: AppTextStyles.buttonText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.textWhite,
+              foregroundColor: AppColors.primary,
+              elevation: AppDimens.elevationLarge,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
+            ),
+            onPressed: _pickAndUploadDocument,
+          ),
+        ],
+        const SizedBox(height: 10),
+        ..._documents.map(
+          (d) => ListTile(
+            leading: const Icon(Icons.insert_drive_file, color: AppColors.inputIcon),
+            title: Text(d, style: AppTextStyles.formFieldText),
+            trailing: IconButton(
+              icon: const Icon(Icons.close, color: Colors.red),
+              onPressed: () => setState(() => _documents.remove(d)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        _submitButton("Guardar y validar"),
+      ],
     );
   }
 }
