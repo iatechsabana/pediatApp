@@ -98,7 +98,19 @@ class ChatListPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      title: Text(user['name'] ?? 'Usuario'),
+                      title: Row(
+                        children: [
+                          Text(user['name'] ?? 'Usuario'),
+                          if (!isOnline)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                'No activo',
+                                style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+                              ),
+                            ),
+                        ],
+                      ),
                       subtitle: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         stream: FirebaseFirestore.instance
                             .collection('chats')
