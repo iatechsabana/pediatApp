@@ -76,11 +76,31 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+    Future<void> _saveFcmToken() async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+            'fcmToken': token,
+          });
+        }
+      }
+    }
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _setOnlineStatus(true);
+    _saveFcmToken();
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'fcmToken': newToken,
+        });
+      }
+    });
   }
 
   @override
