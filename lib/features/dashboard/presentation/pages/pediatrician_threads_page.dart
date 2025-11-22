@@ -477,10 +477,22 @@ class _StoryBoxEditableState extends State<_StoryBoxEditable> {
     _controller = TextEditingController(text: storyText);
   }
 
+  @override
+  void didUpdateWidget(covariant _StoryBoxEditable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialText != oldWidget.initialText) {
+      storyText = widget.initialText;
+      _controller.text = storyText ?? '';
+    }
+  }
+
   Future<void> _saveStory(String text) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No puedes guardar una historia vacía')));
+      return;
+    }
     final docRef = FirebaseFirestore.instance.collection('stories').doc(user.uid);
     final now = FieldValue.serverTimestamp();
     await docRef.set({
@@ -490,6 +502,8 @@ class _StoryBoxEditableState extends State<_StoryBoxEditable> {
       'uid': user.uid,
       'authorName': user.displayName ?? '',
     }, SetOptions(merge: true));
+    setState(() => storyText = text);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Historia guardada!')));
   }
 
   Future<void> _deleteStory() async {
@@ -503,6 +517,7 @@ class _StoryBoxEditableState extends State<_StoryBoxEditable> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     return Container(
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.all(14),
@@ -513,14 +528,11 @@ class _StoryBoxEditableState extends State<_StoryBoxEditable> {
           BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(0, 2)),
         ],
       ),
-
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.edit, color: Colors.teal),
-
           const SizedBox(width: 12),
-
           Expanded(
             child: TextField(
               controller: _controller,
@@ -532,26 +544,52 @@ class _StoryBoxEditableState extends State<_StoryBoxEditable> {
               ),
               onChanged: (val) {
                 setState(() => storyText = val);
-                _saveStory(val);
               },
             ),
           ),
-
-          if (storyText != null && storyText!.isNotEmpty)
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'delete') _deleteStory();
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.redAccent, size: 18),
-                      SizedBox(width: 8),
-                      Text('Eliminar'),
-                    ],
-                  ),
+          const SizedBox(width: 8),
+          if (user != null && storyText != null && storyText!.isNotEmpty)
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.save_alt, color: Colors.teal, size: 26),
+                  tooltip: 'Guardar historia',
+                  onPressed: () async {
+                    await _saveStory(_controller.text.trim());
+                  },
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.grey, size: 24),
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      // Permitir edición directa en el TextField
+                      FocusScope.of(context).requestFocus(FocusNode());
+                    } else if (value == 'delete') {
+                      await _deleteStory();
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18),
+                          SizedBox(width: 8),
+                          Text('Editar'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.redAccent, size: 18),
+                          SizedBox(width: 8),
+                          Text('Eliminar'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
