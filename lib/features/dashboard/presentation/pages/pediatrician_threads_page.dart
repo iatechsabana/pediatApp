@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'thread_comments_page.dart';
-import 'pediatrician_profile_page.dart';
 import 'public_profile_page.dart';
 
 
