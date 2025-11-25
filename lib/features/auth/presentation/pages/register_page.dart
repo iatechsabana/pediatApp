@@ -77,6 +77,8 @@ class RegisterPage extends StatefulWidget {
 enum AccountType { user, pediatrician }
 
 class _RegisterPageState extends State<RegisterPage> {
+    // Estado para autorización de tratamiento de datos
+    bool _dataTreatmentAccepted = false;
   int _step = 0;
   bool _obscure = true;
   bool _isLoading = false;
@@ -337,7 +339,82 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
         const SizedBox(height: 20),
-        // El botón de guardar y validar se moverá al Row de navegación
+
+        // Card de consentimiento de tratamiento de datos
+        Card(
+          color: AppColors.inputFill,
+          elevation: AppDimens.elevationMedium,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimens.paddingLarge),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _dataTreatmentAccepted,
+                  onChanged: (v) => setState(() => _dataTreatmentAccepted = v ?? false),
+                  activeColor: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.privacy_tip, color: AppColors.primary, size: 22),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              "Consentimiento de tratamiento de datos",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppColors.primary,
+                                fontFamily: 'Montserrat',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "Autorizo el tratamiento de mis datos personales conforme a la política de privacidad y habeas data.",
+                        style: AppTextStyles.formFieldText,
+                      ),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Abrir enlace a política de privacidad
+                        },
+                        child: Text(
+                          "Ver política de privacidad",
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (!_dataTreatmentAccepted)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6.0),
+                          child: Text(
+                            "Debes autorizar el tratamiento de datos para continuar.",
+                            style: TextStyle(color: AppColors.error, fontSize: 13),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -458,6 +535,12 @@ class _RegisterPageState extends State<RegisterPage> {
   // =======================================================
 
   Future<void> _submit() async {
+    if (_step == 2 && !_dataTreatmentAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debes autorizar el tratamiento de datos para continuar.')),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Enviar formulario')),
     );
