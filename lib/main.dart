@@ -81,9 +81,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       if (user != null) {
         final token = await FirebaseMessaging.instance.getToken();
         if (token != null) {
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-            'fcmToken': token,
-          });
+          final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          final docSnap = await docRef.get();
+          if (docSnap.exists) {
+            await docRef.update({'fcmToken': token});
+          } else {
+            await docRef.set({'fcmToken': token}, SetOptions(merge: true));
+          }
         }
       }
     }
@@ -96,9 +100,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'fcmToken': newToken,
-        });
+        final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final docSnap = await docRef.get();
+        if (docSnap.exists) {
+          await docRef.update({'fcmToken': newToken});
+        } else {
+          await docRef.set({'fcmToken': newToken}, SetOptions(merge: true));
+        }
       }
     });
   }
@@ -122,10 +130,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Future<void> _setOnlineStatus(bool online) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'online': online,
-        'lastActive': FieldValue.serverTimestamp(),
-      });
+      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final docSnap = await docRef.get();
+      if (docSnap.exists) {
+        await docRef.update({
+          'online': online,
+          'lastActive': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await docRef.set({
+          'online': online,
+          'lastActive': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
     }
   }
 

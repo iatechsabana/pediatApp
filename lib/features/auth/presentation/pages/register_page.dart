@@ -1,10 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
-import '../../../../core/utils/document_picker_stub.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/utils/document_picker_stub.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'login_page.dart';
+
+// =======================================================
+// CLASE AUXILIAR PARA DOCUMENTOS
+// =======================================================
+
+class _DocumentoItem {
+  final String nombre;
+  final String? url;
+  final bool obligatorio;
+  final Future<void> Function()? onUpload;
+  final VoidCallback? onDelete;
+
+  const _DocumentoItem({
+    required this.nombre,
+    required this.url,
+    required this.obligatorio,
+    this.onUpload,
+    this.onDelete,
+  });
+}
 
 // =======================================================
 // MÉTODOS GLOBALES PARA SUBIDA DE DOCUMENTOS
@@ -82,13 +107,21 @@ class RegisterPage extends StatefulWidget {
 enum AccountType { user, pediatrician }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // Estado para autorización de tratamiento de datos
+  Future<void> launchUrlCustom(Uri url) async {
+    if (await url_launcher.canLaunch(url.toString())) {
+      await url_launcher.launch(url.toString());
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir el enlace.')),
+      );
+    }
+  }
+
   bool _dataTreatmentAccepted = false;
   int _step = 0;
   bool _obscure = true;
   bool _isLoading = false;
 
-  // CONTROLADORES
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -97,12 +130,12 @@ class _RegisterPageState extends State<RegisterPage> {
   final _addressController = TextEditingController();
   final _experienceController = TextEditingController();
 
-  // ESTADO
   AccountType _accountType = AccountType.user;
 
   List<String> _documents = [];
   String? _polizaUrl;
   String? _tarjetaProfesionalUrl;
+  String? _documentoIdentidadUrl;
 
   String? _selectedFileName;
   Uint8List? _selectedFileBytes;
@@ -137,11 +170,15 @@ class _RegisterPageState extends State<RegisterPage> {
   // =======================================================
 
   void _nextStep() {
-    if (_step < 2) setState(() => _step++);
+    if (_step < 2) {
+      setState(() => _step++);
+    }
   }
 
   void _prevStep() {
-    if (_step > 0) setState(() => _step--);
+    if (_step > 0) {
+      setState(() => _step--);
+    }
   }
 
   // =======================================================
@@ -250,7 +287,7 @@ class _RegisterPageState extends State<RegisterPage> {
           isExpanded: true,
           decoration: _input("País", Icons.flag).copyWith(
             hintText: "País",
-            hintStyle: TextStyle(
+            hintStyle: const TextStyle(
               color: AppColors.textWhite,
               fontSize: 16,
               fontFamily: 'Montserrat',
@@ -293,157 +330,176 @@ class _RegisterPageState extends State<RegisterPage> {
   // =======================================================
 
   Widget _stepP3() {
+    final List<_DocumentoItem> documentos = [
+      _DocumentoItem(
+        nombre: "Póliza de responsabilidad única",
+        url: _polizaUrl,
+        obligatorio: false,
+        onUpload: () async {
+          await _pickAndUploadPoliza(
+            context,
+            (url) => setState(() => _polizaUrl = url),
+          );
+        },
+        onDelete: () => setState(() => _polizaUrl = null),
+      ),
+      _DocumentoItem(
+        nombre: "Tarjeta profesional",
+        url: _tarjetaProfesionalUrl,
+        obligatorio: false,
+        onUpload: () async {
+          await _pickAndUploadTarjetaProfesional(
+            context,
+            (url) => setState(() => _tarjetaProfesionalUrl = url),
+          );
+        },
+        onDelete: () => setState(() => _tarjetaProfesionalUrl = null),
+      ),
+      _DocumentoItem(
+        nombre: "Documento de identidad",
+        url: _documentoIdentidadUrl,
+        obligatorio: false,
+        onUpload: () async {
+          final picked = await pickDocument();
+          if (picked == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No seleccionaste ningún documento.'),
+              ),
+            );
+            return;
+          }
+
+          final fileName = picked.name;
+          final fileBytes = picked.bytes;
+          final maxSize = 5 * 1024 * 1024;
+
+          if (fileBytes.length > maxSize) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'El archivo supera el límite de 5MB o es inválido',
+                ),
+              ),
+            );
+            return;
+          }
+
+          final storageRef = FirebaseStorage.instance.ref().child(
+            'documentos_identidad/${DateTime.now().millisecondsSinceEpoch}_$fileName',
+          );
+
+          await storageRef.putData(fileBytes);
+          final url = await storageRef.getDownloadURL();
+          setState(() => _documentoIdentidadUrl = url);
+        },
+        onDelete: () => setState(() => _documentoIdentidadUrl = null),
+      ),
+    ];
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle("Póliza de responsabilidad única"),
-        if (_polizaUrl != null)
-          _fileUploadedCard("Póliza subida", () {
-            setState(() => _polizaUrl = null);
-          })
-        else
-          ElevatedButton.icon(
-            icon: const Icon(Icons.upload_file, color: AppColors.inputIcon),
-            label: Text("Subir póliza", style: AppTextStyles.buttonText),
-            onPressed: () => _pickAndUploadPoliza(
-              context,
-              (url) => setState(() => _polizaUrl = url),
+        _sectionTitle("Documentos requeridos"),
+        const SizedBox(height: 12),
+        ...documentos.map(
+          (doc) => ListTile(
+            leading: Checkbox(
+              value: doc.url != null,
+              onChanged: (doc.url == null && doc.onUpload != null)
+                  ? (v) async => await doc.onUpload!.call()
+                  : null,
+              activeColor: AppColors.primary,
             ),
-          ),
-        const SizedBox(height: AppDimens.paddingMedium),
-
-        _sectionTitle("Tarjeta profesional"),
-        if (_tarjetaProfesionalUrl != null)
-          _fileUploadedCard("Tarjeta profesional subida", () {
-            setState(() => _tarjetaProfesionalUrl = null);
-          })
-        else
-          ElevatedButton.icon(
-            icon: const Icon(Icons.upload_file, color: AppColors.inputIcon),
-            label: Text(
-              "Subir tarjeta profesional",
-              style: AppTextStyles.buttonText,
+            title: Text(
+              doc.url != null && doc.nombre == "Documento de identidad"
+                  ? "Documento de identidad: subido"
+                  : doc.nombre,
+              style: AppTextStyles.formFieldText.copyWith(fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            onPressed: () => _pickAndUploadTarjetaProfesional(
-              context,
-              (url) => setState(() => _tarjetaProfesionalUrl = url),
-            ),
-          ),
-        const SizedBox(height: AppDimens.paddingMedium),
-
-        _sectionTitle("Otros documentos"),
-        if (_selectedFileName != null)
-          _fileTemporaryCard()
-        else
-          ElevatedButton.icon(
-            icon: const Icon(Icons.upload_file, color: AppColors.inputIcon),
-            label: Text(
-              "Seleccionar documento",
-              style: AppTextStyles.buttonText,
-            ),
-            onPressed: _pickAndUploadDocument,
-          ),
-        const SizedBox(height: 10),
-        ..._documents.map(
-          (d) => ListTile(
-            leading: const Icon(
-              Icons.insert_drive_file,
-              color: AppColors.inputIcon,
-            ),
-            title: Text(d, style: AppTextStyles.formFieldText),
-            trailing: IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
-              onPressed: () => setState(() => _documents.remove(d)),
-            ),
+            trailing: doc.url != null
+                ? IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    onPressed: doc.onDelete,
+                  )
+                : IconButton(
+                    icon: const Icon(
+                      Icons.upload_file,
+                      color: AppColors.inputIcon,
+                    ),
+                    onPressed: doc.onUpload,
+                  ),
           ),
         ),
-        const SizedBox(height: 20),
-
-        // Card de consentimiento de tratamiento de datos
-        Card(
-          color: AppColors.inputFill,
-          elevation: AppDimens.elevationSmall,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppDimens.paddingSmall),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Checkbox(
-                  value: _dataTreatmentAccepted,
-                  onChanged: (v) =>
-                      setState(() => _dataTreatmentAccepted = v ?? false),
-                  activeColor: AppColors.primary,
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.privacy_tip,
-                            color: AppColors.primary,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              "Consentimiento de datos",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                                color: AppColors.primary,
-                                fontFamily: 'Montserrat',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Autorizo el tratamiento de mis datos personales conforme a la política de privacidad y habeas data.",
-                        style: AppTextStyles.formFieldText.copyWith(
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      GestureDetector(
-                        onTap: () {
-                          // TODO: Abrir enlace a política de privacidad
-                        },
-                        child: Text(
-                          "Ver política de privacidad",
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            decoration: TextDecoration.underline,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (!_dataTreatmentAccepted)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            "Debes autorizar el tratamiento de datos para continuar.",
-                            style: TextStyle(
-                              color: AppColors.error,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Checkbox(
+              value: _dataTreatmentAccepted,
+              onChanged: (v) {
+                setState(() {
+                  _dataTreatmentAccepted = v ?? false;
+                });
+              },
+              activeColor: AppColors.primary,
             ),
-          ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text:
+                              'Autorizo el tratamiento de mis datos personales conforme a la ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                        WidgetSpan(
+                          child: GestureDetector(
+                            onTap: () {
+                              launchUrlCustom(
+                                Uri.parse(
+                                  'https://www.sic.gov.co/sites/default/files/files/Politica_de_Tratamiento_de_Datos_Personales.pdf',
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 2.0),
+                              child: Text(
+                                'política de tratamiento de datos',
+                                style: TextStyle(
+                                  color: Colors.yellow,
+                                  decoration: TextDecoration.underline,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        TextSpan(
+                          text: '.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -461,63 +517,6 @@ class _RegisterPageState extends State<RegisterPage> {
         fontWeight: FontWeight.bold,
         color: Colors.white,
         fontFamily: 'Montserrat',
-      ),
-    );
-  }
-
-  Widget _fileUploadedCard(String title, VoidCallback onDelete) {
-    return Card(
-      color: AppColors.inputFill,
-      child: ListTile(
-        leading: const Icon(
-          Icons.insert_drive_file,
-          color: AppColors.inputIcon,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.primary,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Montserrat',
-          ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.close, color: Colors.red),
-          onPressed: onDelete,
-        ),
-      ),
-    );
-  }
-
-  Widget _fileTemporaryCard() {
-    return Card(
-      color: AppColors.inputFill,
-      child: ListTile(
-        leading: const Icon(
-          Icons.insert_drive_file,
-          color: AppColors.inputIcon,
-        ),
-        title: Text(
-          _selectedFileName!,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.primary,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Montserrat',
-          ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.close, color: Colors.red),
-          onPressed: () {
-            setState(() {
-              _selectedFileName = null;
-              _selectedFileBytes = null;
-            });
-          },
-        ),
       ),
     );
   }
@@ -541,33 +540,36 @@ class _RegisterPageState extends State<RegisterPage> {
   // BOTÓN DE ENVÍO
   // =======================================================
 
-  Widget _submitButton(String text) => SizedBox(
-    height: AppDimens.buttonHeight,
-    child: ElevatedButton(
-      onPressed: _isLoading ? null : _submit,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.textWhite,
-        foregroundColor: AppColors.primary,
-        elevation: AppDimens.elevationLarge,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
+  Widget _submitButton(String text) {
+    return SizedBox(
+      width: double.infinity,
+      height: AppDimens.buttonHeight,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.textWhite,
+          foregroundColor: AppColors.primary,
+          elevation: AppDimens.elevationMedium,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
+          ),
         ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(text, style: AppTextStyles.buttonText),
       ),
-      child: _isLoading
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-                strokeWidth: 2,
-              ),
-            )
-          : Text(text, style: AppTextStyles.buttonText),
-    ),
-  );
+    );
+  }
 
   // =======================================================
-  // ENVÍO FINAL (LÓGICA A COMPLETAR)
+  // ENVÍO FINAL CORREGIDO
   // =======================================================
 
   Future<void> _submit() async {
@@ -581,9 +583,85 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Enviar formulario')));
+
+    if (_accountType == AccountType.pediatrician) {
+      if (_polizaUrl == null ||
+          _tarjetaProfesionalUrl == null ||
+          _documentoIdentidadUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Puedes continuar sin subir todos los documentos, pero tu cuenta quedará pendiente de revisión.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final userType = _accountType == AccountType.pediatrician
+          ? 'pediatra'
+          : 'usuario';
+      final estado = _accountType == AccountType.pediatrician
+          ? 'pendiente'
+          : 'habilitado';
+
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(cred.user!.uid)
+          .set({
+            'name': _nameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'type': userType,
+            'estado': estado,
+            if (_accountType == AccountType.pediatrician) ...{
+              'country': _selectedCountry,
+              'address': _addressController.text.trim(),
+              'experience': _experienceController.text.trim(),
+              'polizaUrl': _polizaUrl,
+              'tarjetaProfesionalUrl': _tarjetaProfesionalUrl,
+              'documentos': _documents,
+            },
+          });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _accountType == AccountType.pediatrician
+                ? 'Registro enviado. Tu cuenta está pendiente de revisión.'
+                : 'Registro exitoso. Por favor inicia sesión.',
+          ),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+
+      // ⭐⭐ NAVEGACIÓN ARREGLADA ⭐⭐
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+      // Desactivar loading solo después de navegar
+      setState(() => _isLoading = false);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    }
   }
 
   // =======================================================
@@ -636,6 +714,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 18),
+
                       // ========== SELECCIÓN TIPO DE CUENTA ==========
                       ToggleButtons(
                         borderRadius: BorderRadius.circular(
@@ -681,15 +760,17 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 18),
-                      // ========== FORMULARIOS ==========
+
                       if (_accountType == AccountType.user) ...[_stepUser()],
+
                       if (_accountType == AccountType.pediatrician) ...[
-                        if (_step == 0) ...[_stepP1()],
-                        if (_step == 1) ...[_pediatricianFields()],
-                        if (_step == 2) ...[_stepP3()],
+                        if (_step == 0) _stepP1(),
+                        if (_step == 1) _pediatricianFields(),
+                        if (_step == 2) _stepP3(),
                         const SizedBox(height: 20),
-                        // NAVEGACIÓN
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -710,7 +791,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.textWhite,
-                                  foregroundColor: AppColors.primary,
                                   elevation: AppDimens.elevationMedium,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
@@ -736,7 +816,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.textWhite,
-                                  foregroundColor: AppColors.primary,
                                   elevation: AppDimens.elevationMedium,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
@@ -753,7 +832,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                   onPressed: _isLoading ? null : _submit,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.textWhite,
-                                    foregroundColor: AppColors.primary,
                                     elevation: AppDimens.elevationMedium,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'register_page.dart';
-import '../../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../../dashboard/presentation/pages/dashboard_page.dart' as dashboard;
 import '../../../dashboard/presentation/pages/pediatrician_dashboard_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
           );
         } else {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const DashboardPage()),
+            MaterialPageRoute(builder: (_) => const dashboard.DashboardPage()),
           );
         }
       }
