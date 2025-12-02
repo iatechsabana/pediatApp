@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'document_viewer_page.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -412,28 +411,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   Future<void> _openDocument(String url, String label) async {
-    final ext = url.split('.').last.toLowerCase();
-
-    if (["jpg", "jpeg", "png", "gif", "pdf"].contains(ext)) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => DocumentViewerPage(url: url, title: label),
-        ),
-      );
-      return;
-    }
-
-    final googleViewer = "https://docs.google.com/viewer?url=$url";
-
-    if (await canLaunchUrl(Uri.parse(googleViewer))) {
-      await launchUrl(Uri.parse(googleViewer),
-          mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DocumentViewerPage(url: url, title: label),
+      ),
+    );
+    // Todos los archivos se intentan mostrar dentro de la app
   }
 
   /// ==========================================================
