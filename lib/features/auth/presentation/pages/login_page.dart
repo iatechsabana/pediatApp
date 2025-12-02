@@ -60,11 +60,11 @@ class _LoginPageState extends State<LoginPage> {
       // 3. Normalizar tipo de usuario
       final userData = userDoc.data();
       String tipo = (userData?['type'] ?? '').toString().trim().toLowerCase();
-      if (tipo.isEmpty) tipo = 'usuario';
+
+      if (tipo.isEmpty) tipo = 'usuario'; 
       if (tipo.contains('admin')) tipo = 'admin';
       else if (tipo.contains('pediatra')) tipo = 'pediatra';
       else tipo = 'usuario';
-      print('Tipo de usuario obtenido de Firestore (normalizado): $tipo');
 
       // 4. Guardar datos del usuario en SharedPreferences
       final prefs = await SharedPreferences.getInstance();
