@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
@@ -107,6 +108,8 @@ class RegisterPage extends StatefulWidget {
 enum AccountType { user, pediatrician }
 
 class _RegisterPageState extends State<RegisterPage> {
+        String? _documentoIdentidadFrenteUrl;
+        String? _documentoIdentidadReversoUrl;
       DateTime? _birthDate;
     DateTime? _startDate;
   Future<void> launchUrlCustom(Uri url) async {
@@ -130,7 +133,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _experienceController = TextEditingController();
+  // Eliminado: _experienceController
 
   AccountType _accountType = AccountType.user;
 
@@ -138,9 +141,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _polizaUrl;
   String? _tarjetaProfesionalUrl;
   String? _documentoIdentidadUrl;
-
-  String? _selectedFileName;
-  Uint8List? _selectedFileBytes;
+  // Eliminados: _selectedFileName, _selectedFileBytes
 
   String? _selectedCountry = 'Colombia';
 
@@ -435,44 +436,84 @@ class _RegisterPageState extends State<RegisterPage> {
         onDelete: () => setState(() => _tarjetaProfesionalUrl = null),
       ),
       _DocumentoItem(
-        nombre: "Documento de identidad",
-        url: _documentoIdentidadUrl,
+        nombre: "Documento de identidad (frente y reverso)",
+        url: _documentoIdentidadFrenteUrl != null && _documentoIdentidadReversoUrl != null
+            ? "Ambos lados subidos"
+            : null,
         obligatorio: false,
         onUpload: () async {
-          final picked = await pickDocument();
-          if (picked == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No seleccionaste ningún documento.'),
-              ),
-            );
-            return;
-          }
-
-          final fileName = picked.name;
-          final fileBytes = picked.bytes;
-          final maxSize = 5 * 1024 * 1024;
-
-          if (fileBytes.length > maxSize) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'El archivo supera el límite de 5MB o es inválido',
+          final option = await showModalBottomSheet<String>(
+            context: context,
+            builder: (ctx) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_camera),
+                  title: const Text('Tomar foto frente'),
+                  onTap: () => Navigator.of(ctx).pop('frente'),
                 ),
-              ),
-            );
-            return;
-          }
-
-          final storageRef = FirebaseStorage.instance.ref().child(
-            'documentos_identidad/${DateTime.now().millisecondsSinceEpoch}_$fileName',
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_back),
+                  title: const Text('Tomar foto reverso'),
+                  onTap: () => Navigator.of(ctx).pop('reverso'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.upload_file),
+                  title: const Text('Seleccionar archivo'),
+                  onTap: () => Navigator.of(ctx).pop('archivo'),
+                ),
+              ],
+            ),
           );
-
-          await storageRef.putData(fileBytes);
-          final url = await storageRef.getDownloadURL();
-          setState(() => _documentoIdentidadUrl = url);
+          if (option == null) return;
+          final picker = ImagePicker();
+          XFile? image;
+          if (option == 'frente' || option == 'reverso') {
+            image = await picker.pickImage(source: ImageSource.camera);
+            if (image == null) return;
+            final bytes = await image.readAsBytes();
+            final maxSize = 5 * 1024 * 1024;
+            if (bytes.length > maxSize) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La imagen supera el límite de 5MB')));
+              return;
+            }
+            final storageRef = FirebaseStorage.instance.ref().child(
+              'documentos_identidad/${DateTime.now().millisecondsSinceEpoch}_${option}_${image.name}',
+            );
+            await storageRef.putData(bytes);
+            final url = await storageRef.getDownloadURL();
+            setState(() {
+              if (option == 'frente') _documentoIdentidadFrenteUrl = url;
+              else _documentoIdentidadReversoUrl = url;
+            });
+          } else if (option == 'archivo') {
+            final picked = await pickDocument();
+            if (picked == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No seleccionaste ningún documento.')));
+              return;
+            }
+            final fileName = picked.name;
+            final fileBytes = picked.bytes;
+            final maxSize = 5 * 1024 * 1024;
+            if (fileBytes.length > maxSize) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El archivo supera el límite de 5MB o es inválido')));
+              return;
+            }
+            final storageRef = FirebaseStorage.instance.ref().child(
+              'documentos_identidad/${DateTime.now().millisecondsSinceEpoch}_archivo_$fileName',
+            );
+            await storageRef.putData(fileBytes);
+            final url = await storageRef.getDownloadURL();
+            setState(() {
+              _documentoIdentidadFrenteUrl = url;
+              _documentoIdentidadReversoUrl = url;
+            });
+          }
         },
-        onDelete: () => setState(() => _documentoIdentidadUrl = null),
+        onDelete: () => setState(() {
+          _documentoIdentidadFrenteUrl = null;
+          _documentoIdentidadReversoUrl = null;
+        }),
       ),
     ];
 
@@ -604,16 +645,7 @@ class _RegisterPageState extends State<RegisterPage> {
   // SUBIDA DE DOCUMENTOS
   // =======================================================
 
-  Future<void> _pickAndUploadDocument() async {
-    final picked = await pickDocument();
-    if (picked == null) return;
-
-    setState(() {
-      _selectedFileName = picked.name;
-      _selectedFileBytes = picked.bytes;
-      _documents.add(picked.name);
-    });
-  }
+  // Método eliminado por no ser referenciado
 
   // =======================================================
   // BOTÓN DE ENVÍO
@@ -710,6 +742,8 @@ class _RegisterPageState extends State<RegisterPage> {
               'startDate': _startDate != null ? _startDate!.toIso8601String() : null,
               'polizaUrl': _polizaUrl,
               'tarjetaProfesionalUrl': _tarjetaProfesionalUrl,
+              'documentoIdentidadFrenteUrl': _documentoIdentidadFrenteUrl,
+              'documentoIdentidadReversoUrl': _documentoIdentidadReversoUrl,
               'documentos': _documents,
             },
           });
