@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/constants/app_colors.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+import 'document_viewer_page.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 
 class AdminDashboardPage extends StatelessWidget {
   AdminDashboardPage({Key? key}) : super(key: key);
 
-  Future<void> _launchUrl(BuildContext context, String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo abrir el enlace.')));
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +18,38 @@ class AdminDashboardPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         title: const Text('Panel Administrador'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Cerrar sesión',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Cerrar sesión'),
+                  content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Cerrar sesión'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await FirebaseAuth.instance.signOut();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: Container(
         width: double.infinity,
@@ -116,7 +144,14 @@ class AdminDashboardPage extends StatelessWidget {
                                             polizaOk
                                                 ? InkWell(
                                                     child: Text(data['polizaUrl'], style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                                                    onTap: () => _launchUrl(context, data['polizaUrl']),
+                                                    onTap: () {
+                                                      Navigator.of(context).push(MaterialPageRoute(
+                                                        builder: (_) => DocumentViewerPage(
+                                                          url: data['polizaUrl'],
+                                                          title: 'Póliza',
+                                                        ),
+                                                      ));
+                                                    },
                                                   )
                                                 : const Text('No subido'),
                                             const SizedBox(height: 8),
@@ -124,7 +159,14 @@ class AdminDashboardPage extends StatelessWidget {
                                             tarjetaOk
                                                 ? InkWell(
                                                     child: Text(data['tarjetaProfesionalUrl'], style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                                                    onTap: () => _launchUrl(context, data['tarjetaProfesionalUrl']),
+                                                    onTap: () {
+                                                      Navigator.of(context).push(MaterialPageRoute(
+                                                        builder: (_) => DocumentViewerPage(
+                                                          url: data['tarjetaProfesionalUrl'],
+                                                          title: 'Tarjeta Profesional',
+                                                        ),
+                                                      ));
+                                                    },
                                                   )
                                                 : const Text('No subido'),
                                             const SizedBox(height: 8),
@@ -132,7 +174,14 @@ class AdminDashboardPage extends StatelessWidget {
                                             if (data['documentos'] != null && data['documentos'] is List && (data['documentos'] as List).isNotEmpty)
                                               ...List<Widget>.from((data['documentos'] as List).map((docUrl) => InkWell(
                                                     child: Text(docUrl, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                                                    onTap: () => _launchUrl(context, docUrl),
+                                                    onTap: () {
+                                                      Navigator.of(context).push(MaterialPageRoute(
+                                                        builder: (_) => DocumentViewerPage(
+                                                          url: docUrl,
+                                                          title: 'Documento adicional',
+                                                        ),
+                                                      ));
+                                                    },
                                                   )))
                                             else
                                               const Text('No subidos'),
@@ -147,6 +196,8 @@ class AdminDashboardPage extends StatelessWidget {
                                       ],
                                     ),
                                   );
+                                // Importar la pantalla del visor de documentos
+
                                 },
                               ),
                             );

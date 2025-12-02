@@ -57,7 +57,8 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
       final userData = userDoc.data();
-      final tipo = userData?['type'] ?? 'usuario';
+      String tipo = (userData?['type'] ?? '').toString().trim();
+      if (tipo.isEmpty) tipo = 'usuario';
       print('Tipo de usuario obtenido de Firestore: $tipo');
 
       // Guardar datos del usuario en SharedPreferences
@@ -68,12 +69,13 @@ class _LoginPageState extends State<LoginPage> {
       await prefs.setString('type', tipo);
 
       if (mounted) setState(() => _isLoading = false);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Bienvenido, tipo: $tipo'),
           duration: AppConfig.snackbarDuration,
         ));
-        print('Tipo de usuario en login: $tipo');
+
         // Navegar a dashboard según tipo de usuario
         if (tipo == 'admin') {
           Navigator.of(context).pushAndRemoveUntil(
