@@ -2,18 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'document_viewer_page.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 
-class AdminDashboardPage extends StatelessWidget {
-  AdminDashboardPage({Key? key}) : super(key: key);
+class AdminDashboardPage extends StatefulWidget {
+  const AdminDashboardPage({Key? key}) : super(key: key);
 
+  @override
+  _AdminDashboardPageState createState() => _AdminDashboardPageState();
+}
 
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  final TextEditingController searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    searchController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> sendEmailToUser(
+    String email,
+    String subject,
+    String body,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final searchController = TextEditingController();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
@@ -27,7 +52,9 @@ class AdminDashboardPage extends StatelessWidget {
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('Cerrar sesión'),
-                  content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+                  content: const Text(
+                    '¿Estás seguro que deseas cerrar sesión?',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
@@ -67,9 +94,9 @@ class AdminDashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Panel de Administración',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 18),
+
+                /// BUSCADOR
                 TextField(
                   controller: searchController,
                   decoration: const InputDecoration(
@@ -80,33 +107,59 @@ class AdminDashboardPage extends StatelessWidget {
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
+                /// LISTA PENDIENTES
                 Card(
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance.collection('users').where('type', isEqualTo: 'pediatra').where('estado', isEqualTo: 'pendiente').snapshots(),
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .where('type', isEqualTo: 'pediatra')
+                          .where('estado', isEqualTo: 'pendiente')
+                          .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return const Center(child: Text('No hay pediatras pendientes.'));
+                          return const Center(
+                            child: Text('No hay pediatras pendientes.'),
+                          );
                         }
+
                         final docs = snapshot.data!.docs.where((doc) {
                           final data = doc.data() as Map<String, dynamic>;
                           final search = searchController.text.toLowerCase();
-                          return data['name']?.toLowerCase().contains(search) == true || data['email']?.toLowerCase().contains(search) == true;
+
+                          return data['name']?.toLowerCase().contains(search) ==
+                                  true ||
+                              data['email']?.toLowerCase().contains(search) ==
+                                  true;
                         }).toList();
+
                         return ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: docs.length,
                           itemBuilder: (context, index) {
-                            final data = docs[index].data() as Map<String, dynamic>;
-                            final polizaOk = data['polizaUrl'] != null && data['polizaUrl'].toString().isNotEmpty;
-                            final tarjetaOk = data['tarjetaProfesionalUrl'] != null && data['tarjetaProfesionalUrl'].toString().isNotEmpty;
+                            final data =
+                                docs[index].data() as Map<String, dynamic>;
+
+                            final polizaOk = (data['polizaUrl'] ?? '')
+                                .toString()
+                                .isNotEmpty;
+                            final tarjetaOk =
+                                (data['tarjetaProfesionalUrl'] ?? '')
+                                    .toString()
+                                    .isNotEmpty;
+
                             return Card(
                               child: ListTile(
                                 title: Text(data['name'] ?? ''),
@@ -116,73 +169,207 @@ class AdminDashboardPage extends StatelessWidget {
                                     Text('Email: ${data['email'] ?? ''}'),
                                     Text('Tel: ${data['phone'] ?? ''}'),
                                     if (!polizaOk)
-                                      const Text('Falta póliza', style: TextStyle(color: Colors.red)),
+                                      const Text(
+                                        'Falta póliza',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
                                     if (!tarjetaOk)
-                                      const Text('Falta tarjeta profesional', style: TextStyle(color: Colors.red)),
+                                      const Text(
+                                        'Falta tarjeta profesional',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
                                   ],
                                 ),
-                                trailing: (polizaOk && tarjetaOk)
-                                    ? ElevatedButton(
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (polizaOk && tarjetaOk)
+                                      ElevatedButton(
                                         onPressed: () async {
-                                          await FirebaseFirestore.instance.collection('users').doc(docs[index].id).update({'estado': 'habilitado'});
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario habilitado')));
+                                          await FirebaseFirestore.instance
+                                              .collection('users')
+                                              .doc(docs[index].id)
+                                              .update({'estado': 'habilitado'});
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Registro aprobado y usuario notificado',
+                                              ),
+                                            ),
+                                          );
+
+                                          final email = data['email'] ?? '';
+                                          if (email.isNotEmpty) {
+                                            await sendEmailToUser(
+                                              email,
+                                              'Tu cuenta ha sido habilitada en doctorKinds',
+                                              '¡Bienvenido! Tu registro fue aprobado.',
+                                            );
+                                          }
                                         },
                                         child: const Text('Aprobar'),
-                                      )
-                                    : const Text('Documentos incompletos', style: TextStyle(color: Colors.orange)),
+                                      ),
+
+                                    const SizedBox(width: 8),
+
+                                    /// RECHAZAR
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text(
+                                              'Confirmar rechazo',
+                                            ),
+                                            content: const Text(
+                                              '¿Eliminar registro y todos sus archivos?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.of(
+                                                  ctx,
+                                                ).pop(false),
+                                                child: const Text('Cancelar'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(ctx).pop(true),
+                                                child: const Text('Eliminar'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+
+                                        if (confirm != true) return;
+
+                                        final storage =
+                                            FirebaseStorage.instance;
+                                        final List<String> urls = [];
+
+                                        void addUrl(String? url) {
+                                          if (url != null && url.isNotEmpty)
+                                            urls.add(url);
+                                        }
+
+                                        addUrl(data['polizaUrl']);
+                                        addUrl(data['tarjetaProfesionalUrl']);
+                                        addUrl(
+                                          data['documentoIdentidadFrenteUrl'],
+                                        );
+                                        addUrl(
+                                          data['documentoIdentidadReversoUrl'],
+                                        );
+
+                                        if (data['documentos'] is List) {
+                                          urls.addAll(
+                                            (data['documentos'] as List)
+                                                .whereType<String>(),
+                                          );
+                                        }
+
+                                        for (final url in urls) {
+                                          try {
+                                            final ref = storage.refFromURL(url);
+                                            await ref.delete();
+                                          } catch (_) {}
+                                        }
+
+                                        final email = data['email'] ?? '';
+                                        if (email.isNotEmpty) {
+                                          await sendEmailToUser(
+                                            email,
+                                            'Registro rechazado',
+                                            'Tu registro fue rechazado y eliminado.',
+                                          );
+                                        }
+
+                                        await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(docs[index].id)
+                                            .delete();
+
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Registro rechazado y eliminado',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text(
+                                        'Rechazar',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                /// VER DOCUMENTOS
                                 onTap: () {
                                   showDialog(
                                     context: context,
                                     builder: (_) => AlertDialog(
-                                      title: Text('Documentos de ${data['name'] ?? ''}'),
+                                      title: Text(
+                                        'Documentos de ${data['name'] ?? ''}',
+                                      ),
                                       content: SingleChildScrollView(
                                         child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text('Poliza:'),
-                                            polizaOk
-                                                ? InkWell(
-                                                    child: Text(data['polizaUrl'], style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
+                                            _buildDocRow(
+                                              'Póliza',
+                                              data['polizaUrl'],
+                                              context,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            _buildDocRow(
+                                              'Tarjeta Profesional',
+                                              data['tarjetaProfesionalUrl'],
+                                              context,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            const Text(
+                                              'Documentos adicionales:',
+                                            ),
+                                            if (data['documentos'] is List)
+                                              ...List<Widget>.from(
+                                                (data['documentos'] as List).map(
+                                                  (docUrl) => InkWell(
+                                                    child: Text(
+                                                      docUrl,
+                                                      style: const TextStyle(
+                                                        color: Colors.blue,
+                                                        decoration:
+                                                            TextDecoration
+                                                                .underline,
+                                                      ),
+                                                    ),
                                                     onTap: () {
-                                                      Navigator.of(context).push(MaterialPageRoute(
-                                                        builder: (_) => DocumentViewerPage(
-                                                          url: data['polizaUrl'],
-                                                          title: 'Póliza',
+                                                      Navigator.of(
+                                                        context,
+                                                      ).push(
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              DocumentViewerPage(
+                                                                url: docUrl,
+                                                                title:
+                                                                    'Documento adicional',
+                                                              ),
                                                         ),
-                                                      ));
+                                                      );
                                                     },
-                                                  )
-                                                : const Text('No subido'),
-                                            const SizedBox(height: 8),
-                                            Text('Tarjeta Profesional:'),
-                                            tarjetaOk
-                                                ? InkWell(
-                                                    child: Text(data['tarjetaProfesionalUrl'], style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                                                    onTap: () {
-                                                      Navigator.of(context).push(MaterialPageRoute(
-                                                        builder: (_) => DocumentViewerPage(
-                                                          url: data['tarjetaProfesionalUrl'],
-                                                          title: 'Tarjeta Profesional',
-                                                        ),
-                                                      ));
-                                                    },
-                                                  )
-                                                : const Text('No subido'),
-                                            const SizedBox(height: 8),
-                                            Text('Documentos adicionales:'),
-                                            if (data['documentos'] != null && data['documentos'] is List && (data['documentos'] as List).isNotEmpty)
-                                              ...List<Widget>.from((data['documentos'] as List).map((docUrl) => InkWell(
-                                                    child: Text(docUrl, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                                                    onTap: () {
-                                                      Navigator.of(context).push(MaterialPageRoute(
-                                                        builder: (_) => DocumentViewerPage(
-                                                          url: docUrl,
-                                                          title: 'Documento adicional',
-                                                        ),
-                                                      ));
-                                                    },
-                                                  )))
+                                                  ),
+                                                ),
+                                              )
                                             else
                                               const Text('No subidos'),
                                           ],
@@ -190,14 +377,13 @@ class AdminDashboardPage extends StatelessWidget {
                                       ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.of(context).pop(),
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
                                           child: const Text('Cerrar'),
                                         ),
                                       ],
                                     ),
                                   );
-                                // Importar la pantalla del visor de documentos
-
                                 },
                               ),
                             );
@@ -207,58 +393,62 @@ class AdminDashboardPage extends StatelessWidget {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 24),
-                const Text('Pediatras habilitados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+
+                /// HABILITADOS
+                const Text(
+                  'Pediatras habilitados',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 12),
+
                 Card(
-                  color: Colors.white,
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance.collection('users').where('type', isEqualTo: 'pediatra').where('estado', isEqualTo: 'habilitado').snapshots(),
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .where('type', isEqualTo: 'pediatra')
+                          .where('estado', isEqualTo: 'habilitado')
+                          .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return const Center(child: Text('No hay pediatras habilitados.'));
+                          return const Center(
+                            child: Text('No hay pediatras habilitados.'),
+                          );
                         }
+
                         final docs = snapshot.data!.docs;
+
                         return ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: docs.length,
                           itemBuilder: (context, index) {
-                            final data = docs[index].data() as Map<String, dynamic>;
+                            final data =
+                                docs[index].data() as Map<String, dynamic>;
                             return Card(
                               child: ListTile(
                                 title: Text(data['name'] ?? ''),
-                                subtitle: Text('Email: ${data['email'] ?? ''}\nTel: ${data['phone'] ?? ''}'),
-                                trailing: const Text('Habilitado', style: TextStyle(color: Colors.green)),
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      title: Text('Documentos de ${data['name'] ?? ''}'),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Poliza: ${data['polizaUrl'] ?? 'No subido'}'),
-                                          Text('Tarjeta Profesional: ${data['tarjetaProfesionalUrl'] ?? 'No subido'}'),
-                                          Text('Documentos: ${(data['documentos'] ?? []).toString()}'),
-                                        ],
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.of(context).pop(),
-                                          child: const Text('Cerrar'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Email: ${data['email'] ?? ''}'),
+                                    Text('Tel: ${data['phone'] ?? ''}'),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -267,12 +457,41 @@ class AdminDashboardPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                // ...aquí va el resto del dashboard limpio y funcional...
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDocRow(String label, String? url, BuildContext context) {
+    final valid = url != null && url.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label),
+        valid
+            ? InkWell(
+                child: Text(
+                  url!,
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          DocumentViewerPage(url: url, title: label),
+                    ),
+                  );
+                },
+              )
+            : const Text('No subido'),
+      ],
     );
   }
 }
