@@ -107,6 +107,8 @@ class RegisterPage extends StatefulWidget {
 enum AccountType { user, pediatrician }
 
 class _RegisterPageState extends State<RegisterPage> {
+      DateTime? _birthDate;
+    DateTime? _startDate;
   Future<void> launchUrlCustom(Uri url) async {
     if (await url_launcher.canLaunch(url.toString())) {
       await url_launcher.launch(url.toString());
@@ -140,7 +142,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _selectedFileName;
   Uint8List? _selectedFileBytes;
 
-  String? _selectedCountry;
+  String? _selectedCountry = 'Colombia';
 
   final List<String> _countries = [
     'Colombia',
@@ -254,6 +256,36 @@ class _RegisterPageState extends State<RegisterPage> {
       _fieldEmail(),
       _fieldPassword(),
       _fieldPhone(),
+      TextFormField(
+        controller: _addressController,
+        style: AppTextStyles.formFieldText,
+        decoration: _input("Dirección", Icons.map_outlined),
+        validator: (v) => v!.isEmpty ? "Ingresa tu dirección" : null,
+      ),
+      const SizedBox(height: AppDimens.paddingMedium),
+      GestureDetector(
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: DateTime(2000),
+            firstDate: DateTime(1900),
+            lastDate: DateTime.now(),
+          );
+          if (picked != null) setState(() => _birthDate = picked);
+        },
+        child: AbsorbPointer(
+          child: TextFormField(
+            decoration: _input("Fecha de nacimiento", Icons.cake),
+            controller: TextEditingController(
+              text: _birthDate == null
+                ? ''
+                : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
+            ),
+            validator: (v) => _birthDate == null ? "Selecciona tu fecha de nacimiento" : null,
+            style: AppTextStyles.formFieldText,
+          ),
+        ),
+      ),
       const SizedBox(height: 20),
       _submitButton("Registrar"),
     ],
@@ -270,7 +302,37 @@ class _RegisterPageState extends State<RegisterPage> {
         _fieldEmail(),
         _fieldPassword(),
         _fieldPhone(),
+        TextFormField(
+          controller: _addressController,
+          style: AppTextStyles.formFieldText,
+          decoration: _input("Dirección", Icons.map_outlined),
+          validator: (v) => v!.isEmpty ? "Ingresa tu dirección" : null,
+        ),
         const SizedBox(height: AppDimens.paddingMedium),
+        GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: DateTime(2000),
+              firstDate: DateTime(1900),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) setState(() => _birthDate = picked);
+          },
+          child: AbsorbPointer(
+            child: TextFormField(
+              decoration: _input("Fecha de nacimiento", Icons.cake),
+              controller: TextEditingController(
+                text: _birthDate == null
+                  ? ''
+                  : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
+              ),
+              validator: (v) => _birthDate == null ? "Selecciona tu fecha de nacimiento" : null,
+              style: AppTextStyles.formFieldText,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -315,11 +377,28 @@ class _RegisterPageState extends State<RegisterPage> {
           decoration: _input("Dirección de trabajo", Icons.map_outlined),
         ),
         const SizedBox(height: AppDimens.paddingMedium),
-        TextFormField(
-          controller: _experienceController,
-          style: AppTextStyles.formFieldText,
-          keyboardType: TextInputType.number,
-          decoration: _input("Años de experiencia", Icons.schedule),
+        GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(1970),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) setState(() => _startDate = picked);
+          },
+          child: AbsorbPointer(
+            child: TextFormField(
+              decoration: _input("Fecha de inicio de labores", Icons.date_range),
+              controller: TextEditingController(
+                text: _startDate == null
+                  ? ''
+                  : '${_startDate!.day.toString().padLeft(2, '0')}/${_startDate!.month.toString().padLeft(2, '0')}/${_startDate!.year}',
+              ),
+              validator: (v) => _startDate == null ? "Selecciona la fecha de inicio" : null,
+              style: AppTextStyles.formFieldText,
+            ),
+          ),
         ),
       ],
     );
@@ -627,7 +706,8 @@ class _RegisterPageState extends State<RegisterPage> {
             if (_accountType == AccountType.pediatrician) ...{
               'country': _selectedCountry,
               'address': _addressController.text.trim(),
-              'experience': _experienceController.text.trim(),
+              'birthDate': _birthDate != null ? _birthDate!.toIso8601String() : null,
+              'startDate': _startDate != null ? _startDate!.toIso8601String() : null,
               'polizaUrl': _polizaUrl,
               'tarjetaProfesionalUrl': _tarjetaProfesionalUrl,
               'documentos': _documents,
