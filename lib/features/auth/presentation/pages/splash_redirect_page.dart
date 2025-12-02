@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../dashboard/presentation/pages/admin_dashboard_page.dart';
 import '../../../dashboard/presentation/pages/pediatrician_dashboard_page.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart' as dashboard;
@@ -25,12 +25,23 @@ class _SplashRedirectPageState extends State<SplashRedirectPage> {
       Navigator.of(context).pushReplacementNamed('/login');
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    final type = prefs.getString('type') ?? '';
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final data = doc.data();
+    String type = '';
+    if (data != null && data['type'] != null) {
+      type = (data['type'] as String).toLowerCase().trim();
+      type = type
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll(RegExp(r'[^a-z]'), '');
+    }
     Widget next;
     if (type == 'admin') {
       next = const AdminDashboardPage();
-    } else if (type == 'pediatra') {
+    } else if (type.startsWith('pediatra')) {
       next = const PediatricianDashboardPage();
     } else {
       next = const dashboard.DashboardPage();
