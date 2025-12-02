@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
@@ -108,6 +109,13 @@ class RegisterPage extends StatefulWidget {
 enum AccountType { user, pediatrician }
 
 class _RegisterPageState extends State<RegisterPage> {
+          Future<bool> _requestFileAndCameraPermissions() async {
+            if (!mounted) return false;
+            final cameraStatus = await Permission.camera.request();
+            final storageStatus = await Permission.storage.request();
+            final photosStatus = await Permission.photos.request();
+            return cameraStatus.isGranted && (storageStatus.isGranted || photosStatus.isGranted);
+          }
         String? _documentoIdentidadFrenteUrl;
         String? _documentoIdentidadReversoUrl;
       DateTime? _birthDate;
@@ -437,11 +445,20 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       _DocumentoItem(
         nombre: "Documento de identidad (frente y reverso)",
-        url: _documentoIdentidadFrenteUrl != null && _documentoIdentidadReversoUrl != null
-            ? "Ambos lados subidos"
+        url: (_documentoIdentidadFrenteUrl != null || _documentoIdentidadReversoUrl != null)
+            ? (_documentoIdentidadFrenteUrl != null && _documentoIdentidadReversoUrl != null
+                ? "Ambos lados subidos"
+                : _documentoIdentidadFrenteUrl != null
+                    ? "Frente subido"
+                    : "Reverso subido")
             : null,
         obligatorio: false,
         onUpload: () async {
+          final hasPermission = await _requestFileAndCameraPermissions();
+          if (!hasPermission) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permiso denegado para acceder a archivos o cámara.')));
+            return;
+          }
           final option = await showModalBottomSheet<String>(
             context: context,
             builder: (ctx) => Column(
@@ -525,15 +542,17 @@ class _RegisterPageState extends State<RegisterPage> {
         ...documentos.map(
           (doc) => ListTile(
             leading: Checkbox(
-              value: doc.url != null,
+              value: doc.nombre == "Documento de identidad (frente y reverso)"
+                  ? (_documentoIdentidadFrenteUrl != null || _documentoIdentidadReversoUrl != null)
+                  : doc.url != null,
               onChanged: (doc.url == null && doc.onUpload != null)
                   ? (v) async => await doc.onUpload!.call()
                   : null,
               activeColor: AppColors.primary,
             ),
             title: Text(
-              doc.url != null && doc.nombre == "Documento de identidad"
-                  ? "Documento de identidad: subido"
+              doc.nombre == "Documento de identidad (frente y reverso)"
+                  ? (doc.url ?? doc.nombre)
                   : doc.nombre,
               style: AppTextStyles.formFieldText.copyWith(fontSize: 11),
               maxLines: 1,
