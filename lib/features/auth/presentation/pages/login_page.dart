@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'register_page.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart' as dashboard;
+import '../../../dashboard/presentation/pages/admin_dashboard_page.dart';
 import '../../../dashboard/presentation/pages/pediatrician_dashboard_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
@@ -57,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
       }
       final userData = userDoc.data();
       final tipo = userData?['type'] ?? 'usuario';
+      print('Tipo de usuario obtenido de Firestore: $tipo');
 
       // Guardar datos del usuario en SharedPreferences
       final prefs = await SharedPreferences.getInstance();
@@ -71,8 +73,14 @@ class _LoginPageState extends State<LoginPage> {
           content: Text('Bienvenido, tipo: $tipo'),
           duration: AppConfig.snackbarDuration,
         ));
+        print('Tipo de usuario en login: $tipo');
         // Navegar a dashboard según tipo de usuario
-        if (tipo == 'pediatra') {
+        if (tipo == 'admin') {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => AdminDashboardPage()),
+            (route) => false,
+          );
+        } else if (tipo == 'pediatra') {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const PediatricianDashboardPage()),
           );
