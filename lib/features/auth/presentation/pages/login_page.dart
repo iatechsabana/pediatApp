@@ -56,12 +56,17 @@ class _LoginPageState extends State<LoginPage> {
         }
         return;
       }
-      final userData = userDoc.data();
-      String tipo = (userData?['type'] ?? '').toString().trim();
-      if (tipo.isEmpty) tipo = 'usuario';
-      print('Tipo de usuario obtenido de Firestore: $tipo');
 
-      // Guardar datos del usuario en SharedPreferences
+      // 3. Normalizar tipo de usuario
+      final userData = userDoc.data();
+      String tipo = (userData?['type'] ?? '').toString().trim().toLowerCase();
+      if (tipo.isEmpty) tipo = 'usuario';
+      if (tipo.contains('admin')) tipo = 'admin';
+      else if (tipo.contains('pediatra')) tipo = 'pediatra';
+      else tipo = 'usuario';
+      print('Tipo de usuario obtenido de Firestore (normalizado): $tipo');
+
+      // 4. Guardar datos del usuario en SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('uid', credential.user?.uid ?? '');
       await prefs.setString('email', userData?['email'] ?? '');
@@ -70,27 +75,26 @@ class _LoginPageState extends State<LoginPage> {
 
       if (mounted) setState(() => _isLoading = false);
 
+      // 5. Navegación segura según tipo
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Bienvenido, tipo: $tipo'),
           duration: AppConfig.snackbarDuration,
         ));
 
-        // Navegar a dashboard según tipo de usuario
+        Widget nextPage;
         if (tipo == 'admin') {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => AdminDashboardPage()),
-            (route) => false,
-          );
+          nextPage = AdminDashboardPage();
         } else if (tipo == 'pediatra') {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const PediatricianDashboardPage()),
-          );
+          nextPage = const PediatricianDashboardPage();
         } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const dashboard.DashboardPage()),
-          );
+          nextPage = const dashboard.DashboardPage();
         }
+
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => nextPage),
+          (route) => false,
+        );
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _isLoading = false);
