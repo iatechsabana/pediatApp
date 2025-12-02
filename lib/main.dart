@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/dashboard/presentation/pages/pediatrician_dashboard_page.dart';
 import 'features/dashboard/presentation/pages/dashboard_page.dart';
+import 'features/auth/presentation/pages/splash_redirect_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'core/constants/app_colors.dart';
@@ -179,10 +180,10 @@ class AuthGate extends StatelessWidget {
           );
         }
         if (snapshot.hasData && snapshot.data != null) {
-          // User is logged in, check type and route accordingly
-          return _DashboardRouter();
+          // Usuario autenticado, redirigir según tipo
+          return const SplashRedirectPage();
         } else {
-          // Not logged in
+          // No autenticado
           return const LoginPage();
         }
       },
@@ -190,36 +191,3 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-class _DashboardRouter extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _getUserData(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final userData = snapshot.data;
-        if (userData == null) {
-          // Fallback to login if user data is missing
-          return const LoginPage();
-        }
-        final tipo = userData['type'] ?? 'usuario';
-        if (tipo == 'pediatra') {
-          return const PediatricianDashboardPage();
-        } else {
-          return const DashboardPage();
-        }
-      },
-    );
-  }
-}
-
-Future<Map<String, dynamic>?> _getUserData() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return null;
-  final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-  return doc.data();
-}
