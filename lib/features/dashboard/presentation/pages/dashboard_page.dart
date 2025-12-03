@@ -3,12 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import '../../../assistant/presentation/pages/assistant_page.dart';
-import '../../../chat/presentation/chat_pages.dart';
 import 'medical_history_page.dart';
 import 'family_core_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
-// app_text_styles import removed (not used in this file)
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -18,57 +16,74 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  // ============================================================
+  //   Mock data (SUSTITUIR por datos reales desde Firebase)
+  // ============================================================
+  int hijosRegistrados = 2;
+  int creditosDisponibles = 50;
+  int creditosUsadosMes = 7;
+  double balance = 125000;
+  double usoMensual = 86;
+
+  final List<Map<String, String>> notasSociales = [
+    {
+      "titulo": "Control de crecimiento",
+      "fecha": "Hoy",
+      "autor": "Dra. Martínez",
+    },
+    {"titulo": "Nota de alimentación", "fecha": "Ayer", "autor": "Dr. López"},
+    {
+      "titulo": "Seguimiento respiratorio",
+      "fecha": "Hace 3 días",
+      "autor": "Dra. Gómez",
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
-    // MediaQuery available if needed
-
     return Scaffold(
+      // ============================================================
+      //   APP BAR SUPERIOR (con Chatbot + Notificaciones)
+      // ============================================================
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,
-        title: const Text('Panel de control'),
+        title: const Text("Panel de control"),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_outlined)),
           IconButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AssistantPage())),
-            icon: const Icon(Icons.chat_bubble_outline),
-            tooltip: 'Asistente pediátrico',
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
           ),
           IconButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ChatListPage()),
+            icon: const Icon(Icons.smart_toy_outlined),
+            tooltip: "Asistente pediátrico",
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AssistantPage()),
             ),
-            icon: const Icon(Icons.chat, color: Colors.teal, size: 26),
-            tooltip: 'Chat entre colegas',
           ),
-        ],
-      ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: AppColors.primary),
-              child: Row(
-                children: [
-                  const CircleAvatar(radius: 28, backgroundColor: AppColors.textWhite, child: Icon(Icons.person, color: AppColors.primary)),
-                  const SizedBox(width: AppDimens.paddingMedium),
-                  const Expanded(
-                    child: Text('Hola, Usuario', style: TextStyle(color: AppColors.textWhite, fontSize: 16, fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(leading: const Icon(Icons.dashboard), title: const Text('Inicio'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.person), title: const Text('Perfil'), onTap: () {}),
-            ListTile(leading: const Icon(Icons.calendar_today), title: const Text('Citas'), onTap: () {}),
-            ListTile(leading: const Icon(Icons.history_edu), title: const Text('Antecedentes médicos'), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MedicalHistoryPage()))),
-            ListTile(leading: const Icon(Icons.family_restroom), title: const Text('Núcleo familiar'), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FamilyCorePage()))),
-            const Spacer(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Cerrar sesión'),
-              onTap: () async {
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: "Cerrar sesión",
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text("Cerrar sesión"),
+                  content: const Text("¿Estás seguro que deseas cerrar sesión?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text("Cancelar"),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text("Cerrar sesión"),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
                 try {
                   await FirebaseAuth.instance.signOut();
                   final prefs = await SharedPreferences.getInstance();
@@ -82,218 +97,319 @@ class _DashboardPageState extends State<DashboardPage> {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al cerrar sesión: $e')),
+                      SnackBar(content: Text("Error al cerrar sesión: $e")),
                     );
                   }
                 }
-              },
-            ),
-          ],
-        ),
+              }
+            },
+          ),
+        ],
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Theme.of(context).scaffoldBackgroundColor,
+
+      // ============================================================
+      //   MENÚ LATERAL
+      // ============================================================
+      drawer: Drawer(
         child: Column(
           children: [
-            // Header area with gradient and greeting
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: AppDimens.horizontalPadding, vertical: AppDimens.verticalPadding),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [AppColors.primaryLight, AppColors.primary], begin: Alignment.topLeft, end: Alignment.bottomRight),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('Buen día,', style: TextStyle(color: AppColors.inputHint, fontSize: 14)),
-                          SizedBox(height: 4),
-                          Text('Bienvenido al panel', style: TextStyle(color: AppColors.textWhite, fontSize: 20, fontWeight: FontWeight.w800)),
-                        ],
+            DrawerHeader(
+              decoration: const BoxDecoration(color: AppColors.primary),
+              child: Row(
+                children: const [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AppColors.textWhite,
+                    child: Icon(Icons.person, color: AppColors.primary),
+                  ),
+                  SizedBox(width: AppDimens.paddingMedium),
+                  Expanded(
+                    child: Text(
+                      'Hola, Usuario',
+                      style: TextStyle(
+                        color: AppColors.textWhite,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(AppDimens.paddingSmall),
-                      decoration: BoxDecoration(color: AppColors.inputFill, borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge)),
-                      child: const Icon(Icons.local_hospital_rounded, color: AppColors.inputIcon, size: 28),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
 
-            // Main content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppDimens.paddingLarge, vertical: AppDimens.paddingMedium),
-                child: LayoutBuilder(builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 800;
-                  return isWide
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left column: stats + quick actions
-                            SizedBox(
-                              width: constraints.maxWidth * 0.45,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildStatsRow(),
-                                  const SizedBox(height: 12),
-                                  _buildQuickActions(),
-                                  const SizedBox(height: 12),
-                                  Expanded(child: _buildRecentList()),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 18),
-                            // Right column: main list or calendar
-                            Expanded(child: _buildAppointmentsOverview()),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildStatsRow(),
-                            const SizedBox(height: 12),
-                            _buildQuickActions(),
-                            const SizedBox(height: 12),
-                            Expanded(child: _buildAppointmentsOverview()),
-                            const SizedBox(height: 12),
-                            Expanded(child: _buildRecentList()),
-                          ],
-                        );
-                }),
+            ListTile(
+              leading: const Icon(Icons.dashboard),
+              title: const Text('Inicio'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.history_edu),
+              title: const Text('Antecedentes médicos'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MedicalHistoryPage()),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.family_restroom),
+              title: const Text('Núcleo familiar'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FamilyCorePage()),
+              ),
+            ),
+
+            const Spacer(),
+          ],
+        ),
+      ),
+
+      // ============================================================
+      //   CUERPO PRINCIPAL DEL DASHBOARD
+      // ============================================================
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildHeader(),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildMetricDashboard(),
+                  const SizedBox(height: 16),
+                  _buildUsageCard(),
+                  const SizedBox(height: 16),
+                  _buildNotasSociales(),
+                ],
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        label: const Text('Nueva cita'),
-        icon: const Icon(Icons.add),
-        backgroundColor: AppColors.primary,
+    );
+  }
+
+  // ============================================================
+  //   ENCABEZADO DEL DASHBOARD
+  // ============================================================
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primaryLight, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "Hola 👋",
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              "Bienvenido al Panel",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatsRow() {
-    return Row(
-      children: [
-        Expanded(child: _statCard('Pacientes', '1.254', Icons.people_outline)),
-        const SizedBox(width: 10),
-        Expanded(child: _statCard('Citas', '36', Icons.calendar_month_outlined)),
-        const SizedBox(width: 10),
-        Expanded(child: _statCard('Mensajes', '7', Icons.chat_bubble_outline)),
-      ],
-    );
-  }
-
-  Widget _statCard(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge), boxShadow: [BoxShadow(color: AppColors.overlayLight, blurRadius: AppDimens.shadowBlur)]),
+  // ============================================================
+  //   MÉTRICAS PRINCIPALES
+  // ============================================================
+  Widget _buildMetricDashboard() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            // withOpacity deprecated -> use withAlpha to set equivalent transparency
-            decoration: BoxDecoration(color: AppColors.primary.withAlpha(31), borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium)),
-            child: Icon(icon, color: AppColors.primary),
+          SizedBox(
+            width: 180,
+            child: _metricCard(
+              "Hijos",
+              "$hijosRegistrados",
+              Icons.child_care_outlined,
+            ),
           ),
-          const SizedBox(width: AppDimens.paddingMedium),
-          // Make the text column flexible so it wraps on small widths instead of overflowing
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(color: AppColors.textBlack54), overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 6),
-              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            ]),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 180,
+            child: _metricCard(
+              "Créditos",
+              "$creditosDisponibles",
+              Icons.monetization_on_outlined,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActions() {
-    return Row(
+  Widget _metricCard(String titulo, String valor, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              Text(
+                valor,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  //   BALANCE + USO DE APLICACIÓN
+  // ============================================================
+  Widget _buildUsageCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Uso y balance",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: _usageTile(
+                  "Créditos usados este mes",
+                  "$creditosUsadosMes",
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _usageTile(
+                  "Balance actual",
+                  "\$${balance.toStringAsFixed(0)}",
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          LinearProgressIndicator(
+            value: usoMensual / 100,
+            color: AppColors.primary,
+            backgroundColor: Colors.grey.shade300,
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            "Uso de la app este mes: $usoMensual%",
+            style: const TextStyle(fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _usageTile(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.person_add_outlined),
-            label: const Text('Agregar paciente'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium))),
-          ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: Colors.black54),
         ),
-        const SizedBox(width: AppDimens.paddingSmall),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.calendar_today_outlined),
-            label: const Text('Agendar'),
-            style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary), foregroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusMedium))),
-          ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
       ],
     );
   }
 
-  Widget _buildRecentList() {
-    final items = List.generate(6, (i) => 'Nueva cita con Paciente ${i + 1} - ${9 + i}:00');
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimens.paddingMedium),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Actividad reciente', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: AppDimens.paddingSmall),
-          Expanded(
-            child: ListView.separated(
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 8),
-              itemBuilder: (context, index) => ListTile(
-                leading: CircleAvatar(backgroundColor: AppColors.primary.withAlpha(31), child: Icon(Icons.event_note, color: AppColors.primary)),
-                title: Text(items[index]),
-                subtitle: Text('Hace ${10 - index} min'),
-              ),
-            ),
-          ),
-        ]),
+  // ============================================================
+  //   NOTAS SOCIALES (TIMELINE)
+  // ============================================================
+  Widget _buildNotasSociales() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
-    );
-  }
-
-  Widget _buildAppointmentsOverview() {
-    final appointments = List.generate(8, (i) => {'time': '${8 + i}:00', 'name': 'Paciente ${i + 1}'});
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Próximas citas', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              itemCount: appointments.length,
-              itemBuilder: (context, idx) => ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(8)), child: Text(appointments[idx]['time']!, style: const TextStyle(fontWeight: FontWeight.w700))),
-                title: Text(appointments[idx]['name']!),
-                trailing: IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.timeline, color: AppColors.primary),
+              SizedBox(width: 6),
+              Text(
+                "Notas sociales de pediatras",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          ...notasSociales.map(
+            (nota) => ListTile(
+              leading: const Icon(
+                Icons.note_alt_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text(nota["titulo"]!),
+              subtitle: Text("${nota["fecha"]} • ${nota["autor"]}"),
             ),
           ),
-        ]),
+        ],
       ),
     );
   }
