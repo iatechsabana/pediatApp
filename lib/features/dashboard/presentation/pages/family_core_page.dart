@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-// app_text_styles import removed (not used in this file)
 import '../../../../core/constants/app_dimens.dart';
 
 class FamilyCorePage extends StatefulWidget {
@@ -12,6 +11,7 @@ class FamilyCorePage extends StatefulWidget {
 
 class _FamilyCorePageState extends State<FamilyCorePage> {
   final _formKey = GlobalKey<FormState>();
+
   final _fatherController = TextEditingController();
   final _motherController = TextEditingController();
   final _caregiverController = TextEditingController();
@@ -20,6 +20,7 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
   final _phoneController = TextEditingController();
   final _emergencyNameController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
+
   final List<_ChildInfo> _children = [];
 
   @override
@@ -32,22 +33,29 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     _phoneController.dispose();
     _emergencyNameController.dispose();
     _emergencyPhoneController.dispose();
-      for (final c in _children) {
-        c.dispose();
-      }
-      super.dispose();
-    }
 
+    for (final c in _children) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  // ============================================================
+  //   GUARDAR
+  // ============================================================
   void _save() {
     if (_formKey.currentState?.validate() ?? false) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Núcleo familiar guardado')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Núcleo familiar guardado correctamente")),
+      );
     }
   }
 
+  // ============================================================
+  //   AGREGAR / ELIMINAR HIJO
+  // ============================================================
   void _addChild() {
-    setState(() {
-      _children.add(_ChildInfo());
-    });
+    setState(() => _children.add(_ChildInfo()));
   }
 
   void _removeChild(int index) {
@@ -57,175 +65,316 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     });
   }
 
-  List<Widget> _buildChildrenForms() {
-    if (_children.isEmpty) return [];
-    final List<Widget> widgets = [];
-    for (var i = 0; i < _children.length; i++) {
-      final child = _children[i];
-      widgets.add(Card(
-        margin: const EdgeInsets.only(bottom: AppDimens.paddingSmall),
-        child: ExpansionTile(
-          key: ValueKey(i),
-          title: Row(
-            children: [
-              Expanded(child: Text(child.nameController.text.isEmpty ? 'Hijo ${i + 1}' : child.nameController.text, style: const TextStyle(fontWeight: FontWeight.w700))),
-            ],
-          ),
-          // place delete button in trailing area
-          trailing: IconButton(onPressed: () => _removeChild(i), icon: const Icon(Icons.delete_outline)),
+  // ============================================================
+  //   UI: TARJETA DE HIJO
+  // ============================================================
+  Widget _buildChildCard(int index) {
+    final child = _children[index];
+
+    return Card(
+      elevation: 3,
+      shadowColor: AppColors.overlayLight,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: AppDimens.paddingMedium),
+      child: ExpansionTile(
+        key: ValueKey(index),
+        title: Row(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(AppDimens.paddingSmall),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(controller: child.nameController, decoration: const InputDecoration(labelText: 'Nombre del hijo')),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: child.ageController,
-                    decoration: const InputDecoration(labelText: 'Fecha de nacimiento'),
-                    readOnly: true,
-                    onTap: () => _pickChildDob(i),
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(controller: child.notesController, decoration: const InputDecoration(labelText: 'Antecedentes del hijo (alergias, condiciones)'), maxLines: 2),
-                ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(30),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.child_care, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                child.nameController.text.isEmpty
+                    ? "Hijo ${index + 1}"
+                    : child.nameController.text,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ],
         ),
-      ));
-    }
-    return widgets;
+
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          onPressed: () => _removeChild(index),
+        ),
+
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppDimens.paddingMedium),
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: child.nameController,
+                  decoration: const InputDecoration(
+                    labelText: "Nombre del hijo",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: AppDimens.paddingSmall),
+
+                TextFormField(
+                  controller: child.ageController,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: "Fecha de nacimiento",
+                    border: OutlineInputBorder(),
+                  ),
+                  onTap: () => _pickChildDob(index),
+                ),
+                const SizedBox(height: AppDimens.paddingSmall),
+
+                TextFormField(
+                  controller: child.notesController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: "Antecedentes del hijo",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
+  // ============================================================
+  //   SELECTOR DE FECHA PARA HIJOS
+  // ============================================================
   Future<void> _pickChildDob(int index) async {
-    final initialDate = DateTime.now().subtract(const Duration(days: 365 * 5));
-    final firstDate = DateTime(1900);
-    final lastDate = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
+      initialDate: DateTime(2018),
+      firstDate: DateTime(1990),
+      lastDate: DateTime.now(),
+      helpText: "Seleccione fecha de nacimiento",
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
+
     if (picked != null) {
-      final formatted = '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
       setState(() {
-        _children[index].ageController.text = formatted;
+        _children[index].ageController.text =
+            "${picked.day}/${picked.month}/${picked.year}";
       });
     }
   }
 
+  // ============================================================
+  //   PÁGINA PRINCIPAL
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Núcleo familiar'),
+        title: const Text("Núcleo familiar"),
         backgroundColor: AppColors.primary,
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppDimens.paddingLarge),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Removed duplicate white heading (AppBar already shows the title)
-            Form(
-              key: _formKey,
-              child: Column(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              // TÍTULO + BOTÓN AGREGAR HIJO
+              Row(
                 children: [
-                  // Dynamic list of children with their own antecedentes
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Hijos', style: TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(width: AppDimens.paddingSmall),
-                        ElevatedButton.icon(
-                          onPressed: _addChild,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Agregar hijo'),
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                        ),
-                      ],
-                    ),
+                  const Icon(Icons.family_restroom, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "Hijos",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  ..._buildChildrenForms(),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _fatherController,
-                    decoration: const InputDecoration(labelText: 'Nombre del padre'),
-                    validator: (v) => null,
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _motherController,
-                    decoration: const InputDecoration(labelText: 'Nombre de la madre'),
-                    validator: (v) => null,
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _caregiverController,
-                    decoration: const InputDecoration(labelText: 'Cuidador principal'),
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _siblingsController,
-                    decoration: const InputDecoration(labelText: 'Número de hermanos'),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _addressController,
-                    decoration: const InputDecoration(labelText: 'Dirección'),
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(labelText: 'Teléfono de contacto'),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  const Divider(),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  const Align(alignment: Alignment.centerLeft, child: Text('Contacto de emergencia', style: TextStyle(fontWeight: FontWeight.w700))),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _emergencyNameController,
-                    decoration: const InputDecoration(labelText: 'Nombre'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Ingrese un nombre' : null,
-                  ),
-                  const SizedBox(height: AppDimens.paddingSmall),
-                  TextFormField(
-                    controller: _emergencyPhoneController,
-                    decoration: const InputDecoration(labelText: 'Teléfono'),
-                    keyboardType: TextInputType.phone,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Ingrese teléfono' : null,
-                  ),
-                  const SizedBox(height: AppDimens.paddingMedium),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _save,
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: AppDimens.buttonHeight / 2),
-                        child: Text('Guardar núcleo familiar'),
+                  const Spacer(),
+                  ElevatedButton.icon(
+                    onPressed: _addChild,
+                    icon: const Icon(Icons.add),
+                    label: const Text("Agregar hijo"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.textWhite,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: AppDimens.paddingMedium),
+              ..._children.asMap().entries.map((e) => _buildChildCard(e.key)),
+
+              const SizedBox(height: AppDimens.paddingLarge),
+
+              // =====================================================
+              //   INFORMACIÓN FAMILIAR GENERAL
+              // =====================================================
+              _buildSectionTitle("Información familiar"),
+
+              TextFormField(
+                controller: _fatherController,
+                decoration: const InputDecoration(
+                  labelText: "Nombre del padre",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppDimens.paddingMedium),
+
+              TextFormField(
+                controller: _motherController,
+                decoration: const InputDecoration(
+                  labelText: "Nombre de la madre",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppDimens.paddingMedium),
+
+              TextFormField(
+                controller: _caregiverController,
+                decoration: const InputDecoration(
+                  labelText: "Cuidador principal",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppDimens.paddingMedium),
+
+              TextFormField(
+                controller: _siblingsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "Número de hermanos",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppDimens.paddingMedium),
+
+              TextFormField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  labelText: "Dirección",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppDimens.paddingMedium),
+
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: "Teléfono de contacto",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              const SizedBox(height: AppDimens.paddingLarge),
+              const Divider(),
+              const SizedBox(height: AppDimens.paddingLarge),
+
+              // =====================================================
+              //   EMERGENCIA
+              // =====================================================
+              _buildSectionTitle("Contacto de emergencia"),
+
+              TextFormField(
+                controller: _emergencyNameController,
+                decoration: const InputDecoration(
+                  labelText: "Nombre",
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v!.isEmpty ? "Ingrese un nombre" : null,
+              ),
+              const SizedBox(height: AppDimens.paddingMedium),
+
+              TextFormField(
+                controller: _emergencyPhoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: "Teléfono",
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v!.isEmpty ? "Ingrese un teléfono" : null,
+              ),
+
+              const SizedBox(height: AppDimens.paddingLarge),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppDimens.buttonHeight / 2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    "Guardar núcleo familiar",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textWhite,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 80),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  //   TITULOS DE SECCIÓN UNIFORMES
+  // ============================================================
+  Widget _buildSectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDimens.paddingSmall),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: Colors.black,
         ),
       ),
     );
   }
 }
 
+// ============================================================
+//   MODELO HIJO
+// ============================================================
 class _ChildInfo {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
