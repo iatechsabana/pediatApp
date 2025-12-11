@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-
 import 'register_page.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart' as dashboard;
 import '../../../dashboard/presentation/pages/admin_dashboard_page.dart';
 import '../../../dashboard/presentation/pages/pediatrician_dashboard_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
-import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/constants/app_config.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';

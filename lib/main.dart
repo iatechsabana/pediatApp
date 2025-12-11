@@ -6,8 +6,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'firebase_options.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-import 'features/dashboard/presentation/pages/pediatrician_dashboard_page.dart';
-import 'features/dashboard/presentation/pages/dashboard_page.dart';
 import 'features/auth/presentation/pages/splash_redirect_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

@@ -62,7 +62,7 @@ class _MedicalHistoryPageState extends State<MedicalHistoryPage> {
   //   GUARDAR FORMULARIO
   // ============================================================
   Future<void> _save() async {
-    if (_formKey.currentState?.validate() ?? false && _user != null) {
+    if (_formKey.currentState?.validate() ?? false) {
       await FirebaseFirestore.instance.collection('medical_history').doc(_user!.uid).set({
         'allergies': _allergiesController.text.trim(),
         'chronic': _chronicController.text.trim(),
