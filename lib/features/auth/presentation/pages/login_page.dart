@@ -67,6 +67,23 @@ class _LoginPageState extends State<LoginPage> {
 
       final userData = userDoc.data()!;
 
+      // Validar estado del usuario
+      final estado = (userData['estado'] ?? '').toString().toLowerCase().trim();
+      if (estado != 'habilitado') {
+        if (mounted) setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              estado == 'pendiente'
+                  ? 'Tu cuenta está pendiente de habilitación.'
+                  : 'Tu cuenta no está habilitada para acceder.'
+            ),
+            duration: AppConfig.errorSnackbarDuration,
+          ),
+        );
+        return;
+      }
+
       // 3. Normalizar tipo de usuario (ARREGLADO)
       String tipoRaw = (userData['type'] ?? '')
           .toString()
