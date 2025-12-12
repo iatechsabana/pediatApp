@@ -782,12 +782,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
       if (!mounted) return;
 
-      // ⭐⭐ NAVEGACIÓN ARREGLADA ⭐⭐
+      // Cerrar sesión para evitar redirección automática al dashboard
+      await FirebaseAuth.instance.signOut();
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (route) => false,
       );
-      // Desactivar loading solo después de navegar
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
