@@ -1,42 +1,19 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../auth/presentation/pages/login_page.dart';
 
 class PediatricianProfilePage extends StatefulWidget {
   const PediatricianProfilePage({super.key});
 
   @override
-  State<PediatricianProfilePage> createState() => _PediatricianProfilePageState();
+  State<PediatricianProfilePage> createState() =>
+      _PediatricianProfilePageState();
 }
 
 class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
-    Future<int> _getThreadsCount() async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return 0;
-      final snap = await FirebaseFirestore.instance.collection('threads').where('authorId', isEqualTo: user.uid).get();
-      return snap.docs.length;
-    }
-
-    Future<int> _getCommentsCount() async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return 0;
-      int total = 0;
-      final threads = await FirebaseFirestore.instance.collection('threads').get();
-      for (final thread in threads.docs) {
-        final comments = await FirebaseFirestore.instance.collection('threads').doc(thread.id).collection('comments').where('authorId', isEqualTo: user.uid).get();
-        total += comments.docs.length;
-      }
-      return total;
-    }
-
-    Future<int> _getCredits() async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return 0;
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      return (doc.data()?['credits'] ?? 0) as int;
-    }
   bool isEditingAbout = false;
   late TextEditingController aboutController;
 
@@ -52,23 +29,95 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
     super.dispose();
   }
 
+  // ===================== FIRESTORE =====================
+
   Future<Map<String, dynamic>?> _getProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     return doc.data();
+  }
+
+  Future<int> _getThreadsCount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    final snap = await FirebaseFirestore.instance
+        .collection('threads')
+        .where('authorId', isEqualTo: user.uid)
+        .get();
+    return snap.docs.length;
+  }
+
+  Future<int> _getCommentsCount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    int total = 0;
+    final threads = await FirebaseFirestore.instance
+        .collection('threads')
+        .get();
+
+    for (final thread in threads.docs) {
+      final comments = await FirebaseFirestore.instance
+          .collection('threads')
+          .doc(thread.id)
+          .collection('comments')
+          .where('authorId', isEqualTo: user.uid)
+          .get();
+      total += comments.docs.length;
+    }
+    return total;
+  }
+
+  Future<int> _getCredits() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 0;
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    return (doc.data()?['credits'] ?? 0) as int;
   }
 
   Future<void> _saveAbout(String about) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'about': about});
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'about': about,
+    });
   }
+
+  // ===================== SERVICIOS =====================
+
+  List<String> _getSelectedServicios(Map<String, dynamic> data, User? user) {
+    return List<String>.from(data['servicio_ofrecidos'] ?? []);
+  }
+
+  Future<void> _updateServicios(
+    List<String> selected,
+    String value,
+    bool checked,
+    User? user,
+  ) async {
+    if (user == null) return;
+    final newList = List<String>.from(selected);
+    checked ? newList.add(value) : newList.remove(value);
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'servicio_ofrecidos': newList,
+    });
+
+    setState(() {});
+  }
+
+  // ===================== UI =====================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFA),
+      backgroundColor: const Color(0xFFF4F7F7),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: _getProfile(),
         builder: (context, snapshot) {
@@ -82,24 +131,16 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
           return SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 32),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(data),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: _buildStatsSection(),
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: _buildAboutSection(data),
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: _buildActions(context),
-                ),
+                const SizedBox(height: 16),
+                _buildStatsSection(),
+                const SizedBox(height: 16),
+                _buildServiceChecks(data),
+                const SizedBox(height: 16),
+                _buildAboutSection(data),
+                const SizedBox(height: 20),
+                _buildActions(context),
               ],
             ),
           );
@@ -108,315 +149,284 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
     );
   }
 
-  // 🔹 HEADER LIMPIO Y MODERNO
+  // ===================== HEADER =====================
+
   Widget _buildHeader(Map<String, dynamic> data) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(0, 36, 0, 32),
+      padding: const EdgeInsets.fromLTRB(20, 48, 20, 28),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFBDEEE6), Color(0xFF1ABC9C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [Color(0xFF1ABC9C), Color(0xFF16A085)],
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white, width: 4),
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))],
-                ),
-                child: data['photoUrl'] != null && data['photoUrl'].toString().isNotEmpty
-                    ? CircleAvatar(
-                        radius: 54,
-                        backgroundImage: NetworkImage(data['photoUrl']),
-                        backgroundColor: Colors.white,
-                      )
-                    : CircleAvatar(
-                        radius: 54,
-                        backgroundColor: Colors.white,
-                        backgroundImage: const AssetImage('assets/images/doctorkids_logo.png'),
-                      ),
-              ),
-              _editAvatarButton(),
-            ],
+          CircleAvatar(
+            radius: 50,
+            backgroundImage:
+                data['photoUrl'] != null &&
+                    data['photoUrl'].toString().isNotEmpty
+                ? NetworkImage(data['photoUrl'])
+                : const AssetImage('assets/images/doctorkids_logo.png')
+                      as ImageProvider,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
             data['name'] ?? '',
             style: const TextStyle(
-              fontSize: 26,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              fontFamily: 'Montserrat',
-              letterSpacing: 0.5,
-              shadows: [
-                Shadow(
-                  color: Colors.black38,
-                  offset: Offset(0, 2),
-                  blurRadius: 4,
-                ),
-              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            data['specialty'] ?? '',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Montserrat',
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            data['email'] ?? '',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Montserrat',
-              letterSpacing: 0.2,
-              shadows: [
-                Shadow(
-                  color: Colors.black26,
-                  offset: Offset(0, 1),
-                  blurRadius: 2,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          _buildHeaderInfoIcons(data),
-        ],
-      ),
-    );
-  }
-
-  Widget _editAvatarButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-      ),
-      child: IconButton(
-        icon: const Icon(Icons.edit, color: Colors.teal),
-        onPressed: () {},
-      ),
-    );
-  }
-
-  Widget _buildHeaderInfoIcons(Map<String, dynamic> data) {
-    final infoItems = <Widget>[];
-
-    void addItem(IconData icon, String text) {
-      infoItems.add(Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
-        ],
-      ));
-    }
-
-    if (data['specialty'] != null) addItem(Icons.medical_services, data['specialty']);
-    if (data['clinic'] != null) addItem(Icons.location_city, data['clinic']);
-    if (data['license'] != null) addItem(Icons.badge, "Licencia: ${data['license']}");
-    if (data['experience'] != null) addItem(Icons.schedule, "${data['experience']} años");
-    if (data['address'] != null) addItem(Icons.map, data['address']);
-
-    return Column(
-      children: infoItems
-          .map((item) => Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: item,
-              ))
-          .toList(),
-    );
-  }
-
-  // 🔹 SECCIÓN DE ESTADÍSTICAS
-  Widget _buildStatsSection() {
-    return FutureBuilder<List<int>>(
-      future: Future.wait([
-        _getThreadsCount(),
-        _getCommentsCount(),
-        _getCredits(),
-      ]),
-      builder: (context, snapshot) {
-        final values = snapshot.data ?? [0, 0, 0];
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _statCard(Icons.groups, "Comunidad", values[0].toString(), Colors.teal.shade100),
-            _statCard(Icons.comment, "Comentarios", values[1].toString(), Colors.orange.shade100),
-            _statCard(Icons.monetization_on, "Créditos", values[2].toString(), Colors.purple.shade100),
-          ],
-        );
-      },
-    );
-
-  }
-
-  Widget _statCard(IconData icon, String label, String value, Color color) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.white,
-            child: Icon(icon, color: Colors.teal, size: 26),
-          ),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
-        ],
-      ),
-    );
-  }
-
-
-  // 🔹 SOBRE MÍ
-  Widget _buildAboutSection(Map<String, dynamic> data) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 4),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text("Sobre mí", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal)),
-              IconButton(
-                icon: Icon(isEditingAbout ? Icons.close : Icons.edit, color: Colors.teal),
-                onPressed: () => setState(() => isEditingAbout = !isEditingAbout),
+              const Icon(
+                Icons.medical_services,
+                size: 16,
+                color: Colors.white70,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                data['specialty'] ?? '',
+                style: const TextStyle(color: Colors.white70),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          isEditingAbout ? _editAboutField() : _aboutText(data),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.email, size: 16, color: Colors.white70),
+              const SizedBox(width: 6),
+              Text(
+                data['email'] ?? '',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _editAboutField() {
-    return Column(
-      children: [
-        TextField(
-          controller: aboutController,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: "Escribe algo sobre ti...",
-            filled: true,
-            fillColor: Colors.teal.shade50,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+  // ===================== STATS =====================
+
+  Widget _buildStatsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: FutureBuilder<List<int>>(
+        future: Future.wait([
+          _getThreadsCount(),
+          _getCommentsCount(),
+          _getCredits(),
+        ]),
+        builder: (context, snapshot) {
+          final values = snapshot.data ?? [0, 0, 0];
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _stat(Icons.forum, "Posts", values[0]),
+              _stat(Icons.comment, "Comentarios", values[1]),
+              _stat(Icons.monetization_on, "Créditos", values[2]),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _stat(IconData icon, String label, int value) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
         ),
-        const SizedBox(height: 8),
-        Row(
+        child: Column(
           children: [
-            ElevatedButton.icon(
-              onPressed: () async {
-                await _saveAbout(aboutController.text.trim());
-                setState(() => isEditingAbout = false);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Actualizado")));
-              },
-              icon: const Icon(Icons.save),
-              label: const Text("Guardar"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
+            Icon(icon, color: Colors.teal),
+            const SizedBox(height: 6),
+            Text(
+              value.toString(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(width: 10),
-            TextButton(
-              onPressed: () => setState(() => isEditingAbout = false),
-              child: const Text("Cancelar"),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _aboutText(Map<String, dynamic> data) {
-    return Text(
-      data['about'] ?? "Pediatra comprometido con la salud infantil.",
-      style: const TextStyle(fontSize: 15, height: 1.4),
-    );
-  }
-
-  // 🔹 BOTONES DE ACCIÓN
-  Widget _buildActions(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.edit, color: Colors.white),
-            label: const Text("Editar perfil"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
-          OutlinedButton.icon(
-            onPressed: () async => _logout(context),
-            icon: const Icon(Icons.logout, color: Colors.teal),
-            label: const Text("Cerrar sesión", style: TextStyle(color: Colors.teal)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.teal),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
-        ],
       ),
+    );
+  }
+
+  // ===================== SERVICIOS =====================
+
+  Widget _buildServiceChecks(Map<String, dynamic> data) {
+    final user = FirebaseAuth.instance.currentUser;
+    final selected = _getSelectedServicios(data, user);
+
+    final servicios = [
+      {
+        'icon': Icons.video_call,
+        'label': 'Telemedicina',
+        'value': 'telemedicina',
+      },
+      {
+        'icon': Icons.local_hospital,
+        'label': 'Consultorio',
+        'value': 'consultorio',
+      },
+      {'icon': Icons.home, 'label': 'Domicilio', 'value': 'domicilio'},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Servicios",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: servicios.map((serv) {
+                final isChecked = selected.contains(serv['value']);
+                return GestureDetector(
+                  onTap: () => _updateServicios(
+                    selected,
+                    serv['value'] as String,
+                    !isChecked,
+                    user,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: isChecked
+                            ? Colors.teal.shade100
+                            : Colors.grey.shade200,
+                        child: Icon(
+                          serv['icon'] as IconData,
+                          color: isChecked ? Colors.teal : Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        serv['label'] as String,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===================== ABOUT =====================
+
+  Widget _buildAboutSection(Map<String, dynamic> data) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Sobre mí",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: Icon(
+                    isEditingAbout ? Icons.close : Icons.edit,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      setState(() => isEditingAbout = !isEditingAbout),
+                ),
+              ],
+            ),
+            isEditingAbout
+                ? Column(
+                    children: [
+                      TextField(
+                        controller: aboutController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: "Describe tu experiencia…",
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _saveAbout(aboutController.text.trim());
+                          setState(() => isEditingAbout = false);
+                        },
+                        child: const Text("Guardar"),
+                      ),
+                    ],
+                  )
+                : Text(
+                    data['about'] ??
+                        "Pediatra comprometido con la salud infantil.",
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===================== ACTIONS =====================
+
+  Widget _buildActions(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () async => _logout(context),
+      icon: const Icon(Icons.logout),
+      label: const Text("Cerrar sesión"),
     );
   }
 
   Future<void> _logout(BuildContext context) async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+    await FirebaseAuth.instance.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
 
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-          (_) => false,
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (_) => false,
+      );
     }
   }
 }
