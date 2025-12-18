@@ -166,10 +166,10 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
             radius: 50,
             backgroundImage:
                 data['photoUrl'] != null &&
-                    data['photoUrl'].toString().isNotEmpty
-                ? NetworkImage(data['photoUrl'])
-                : const AssetImage('assets/images/doctorkids_logo.png')
-                      as ImageProvider,
+                        data['photoUrl'].toString().isNotEmpty
+                    ? NetworkImage(data['photoUrl'])
+                    : const AssetImage('assets/images/doctorkids_logo.png')
+                        as ImageProvider,
           ),
           const SizedBox(height: 12),
           Text(
@@ -208,6 +208,62 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
               ),
             ],
           ),
+          if ((data['phone'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.phone, size: 16, color: Colors.white70),
+                const SizedBox(width: 6),
+                Text(
+                  data['phone'] ?? '',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ],
+          if ((data['country'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.flag, size: 16, color: Colors.white70),
+                const SizedBox(width: 6),
+                Text(
+                  data['country'] ?? '',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ],
+          if ((data['city'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.location_city, size: 16, color: Colors.white70),
+                const SizedBox(width: 6),
+                Text(
+                  data['city'] ?? '',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ],
+          if ((data['experience'] ?? '').toString().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.school, size: 16, color: Colors.white70),
+                const SizedBox(width: 6),
+                Text(
+                  '${data['experience']} años de experiencia',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
