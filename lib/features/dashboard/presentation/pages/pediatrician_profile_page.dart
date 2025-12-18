@@ -466,7 +466,28 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
 
   Widget _buildActions(BuildContext context) {
     return OutlinedButton.icon(
-      onPressed: () async => _logout(context),
+      onPressed: () async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Cerrar sesión'),
+            content: const Text('¿Estás seguro que deseas cerrar sesión?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Cerrar sesión'),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true) {
+          await _logout(context);
+        }
+      },
       icon: const Icon(Icons.logout),
       label: const Text("Cerrar sesión"),
     );
