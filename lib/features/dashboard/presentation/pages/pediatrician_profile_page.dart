@@ -12,7 +12,6 @@ class PediatricianProfilePage extends StatefulWidget {
   State<PediatricianProfilePage> createState() =>
       _PediatricianProfilePageState();
 }
-
 class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
   bool isEditingAbout = false;
   late TextEditingController aboutController;
