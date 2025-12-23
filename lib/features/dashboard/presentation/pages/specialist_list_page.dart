@@ -122,6 +122,13 @@ class SpecialistListPage extends StatelessWidget {
                                       ),
                                       onPressed: () async {
                                         final user = FirebaseAuth.instance.currentUser;
+                                        final toUserId = docs[i].id;
+                                        if (toUserId == null || toUserId.toString().isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Error: No se pudo identificar al médico.')),
+                                          );
+                                          return;
+                                        }
                                         if (user != null) {
                                           Navigator.push(
                                             context,
@@ -129,7 +136,7 @@ class SpecialistListPage extends StatelessWidget {
                                               builder: (_) => ChatConversationPage(
                                                 chatId: '',
                                                 currentUserId: user.uid,
-                                                otherUserId: docs[i].id,
+                                                otherUserId: toUserId,
                                               ),
                                             ),
                                           );
@@ -169,9 +176,16 @@ class SpecialistListPage extends StatelessWidget {
                                         if (confirm != true) return;
                                         final user = FirebaseAuth.instance.currentUser;
                                         if (user == null) return;
+                                        final toUserId = docs[i].id;
+                                        if (toUserId == null || toUserId.toString().isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Error: No se pudo identificar al médico.')),
+                                          );
+                                          return;
+                                        }
                                         // Crear notificación en Firestore para el médico
                                         await FirebaseFirestore.instance.collection('notifications').add({
-                                          'toUserId': docs[i].id,
+                                          'toUserId': toUserId,
                                           'fromUserId': user.uid,
                                           'type': 'videollamada',
                                           'timestamp': FieldValue.serverTimestamp(),
@@ -193,11 +207,18 @@ class SpecialistListPage extends StatelessWidget {
                     IconButton(
                       icon: Icon(Icons.info_outline, color: Colors.teal.shade700),
                       onPressed: () {
+                        final toUserId = docs[i].id;
+                        if (toUserId == null || toUserId.toString().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Error: No se pudo identificar al médico.')),
+                          );
+                          return;
+                        }
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => PublicProfilePage(
-                              userId: docs[i].id,
+                              userId: toUserId,
                               userName: name,
                               userAvatar: data['photoUrl'],
                             ),
