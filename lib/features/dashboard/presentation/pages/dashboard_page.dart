@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import '../../../assistant/presentation/pages/assistant_page.dart';
+import 'request_service_page.dart';
 import 'medical_history_page.dart';
 import 'family_core_page.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -156,6 +157,14 @@ class _DashboardPageState extends State<DashboardPage> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const FamilyCorePage()),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.medical_services),
+              title: const Text('Solicitar servicio'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RequestServicePage()),
               ),
             ),
 
