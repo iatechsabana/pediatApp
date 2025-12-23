@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'public_profile_page.dart';
+import '../../../chat/presentation/chat_pages.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class SpecialistListPage extends StatelessWidget {
   final String service;
   const SpecialistListPage({super.key, required this.service});
+
+  String _serviceLabel(String service) {
+    switch (service) {
+      case 'telemedicina':
+        return 'Telemedicina';
+      case 'consultorio':
+        return 'Consultorio';
+      case 'domicilio':
+        return 'Domicilio';
+      default:
+        return service;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,102 +56,156 @@ class SpecialistListPage extends StatelessWidget {
                   ? '${data['experience']} años de experiencia'
                   : null;
               final phone = data['phone'] ?? '';
-              return InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PublicProfilePage(
-                        userId: docs[i].id,
-                        userName: name,
-                        userAvatar: data['photoUrl'],
-                      ),
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.teal.withAlpha(33),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
                     ),
-                  );
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.teal.withOpacity(0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.teal.withOpacity(0.18), width: 1.5),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundImage: (data['photoUrl'] ?? '').toString().isNotEmpty
-                            ? NetworkImage(data['photoUrl'])
-                            : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
-                      ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 17,
-                                color: Colors.teal,
+                  ],
+                  border: Border.all(color: Colors.teal.shade200, width: 2),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 36,
+                      backgroundImage: (data['photoUrl'] ?? '').toString().isNotEmpty
+                          ? NetworkImage(data['photoUrl'])
+                          : const AssetImage('assets/images/doctorkids_logo.png') as ImageProvider,
+                    ),
+                    const SizedBox(width: 22),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Colors.teal.shade800,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          if (specialty.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, bottom: 6),
+                              child: Text(
+                                specialty,
+                                style: TextStyle(fontSize: 15, color: Colors.teal.shade900, fontWeight: FontWeight.w500),
                               ),
                             ),
-                            if (specialty.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  specialty,
-                                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                                ),
+                          if (service == 'telemedicina')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Wrap(
+                                spacing: 10,
+                                runSpacing: 8,
+                                children: [
+                                  SizedBox(
+                                    width: 140,
+                                    child: ElevatedButton.icon(
+                                      icon: const Icon(Icons.chat),
+                                      label: const Text('Chat', style: TextStyle(color: Colors.white)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.teal,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size(40, 36),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      ),
+                                      onPressed: () async {
+                                        final user = FirebaseAuth.instance.currentUser;
+                                        if (user != null) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ChatConversationPage(
+                                                chatId: '',
+                                                currentUserId: user.uid,
+                                                otherUserId: docs[i].id,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 140,
+                                    child: ElevatedButton.icon(
+                                      icon: const Icon(Icons.video_call),
+                                      label: const Text('Videollamada', style: TextStyle(color: Colors.white)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size(40, 36),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      ),
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Confirmar solicitud'),
+                                            content: const Text('¿Deseas solicitar una videollamada con este médico?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Cancelar'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                child: const Text('Solicitar'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm != true) return;
+                                        final user = FirebaseAuth.instance.currentUser;
+                                        if (user == null) return;
+                                        // Crear notificación en Firestore para el médico
+                                        await FirebaseFirestore.instance.collection('notifications').add({
+                                          'toUserId': docs[i].id,
+                                          'fromUserId': user.uid,
+                                          'type': 'videollamada',
+                                          'timestamp': FieldValue.serverTimestamp(),
+                                          'message': 'Tienes una nueva solicitud de videollamada de un paciente. Por favor revisa la app para responder.',
+                                          'userName': user.displayName ?? '',
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Se notificó al médico para la videollamada.')),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                            if (city.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.location_city, size: 15, color: Colors.teal),
-                                    SizedBox(width: 4),
-                                    Text(city, style: const TextStyle(fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                            if (experience != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.school, size: 15, color: Colors.teal),
-                                    SizedBox(width: 4),
-                                    Text(experience, style: const TextStyle(fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                            if (phone.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.phone, size: 15, color: Colors.teal),
-                                    SizedBox(width: 4),
-                                    Text(phone, style: const TextStyle(fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
-                      const Icon(Icons.arrow_forward_ios, size: 20, color: Colors.teal),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.info_outline, color: Colors.teal.shade700),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PublicProfilePage(
+                              userId: docs[i].id,
+                              userName: name,
+                              userAvatar: data['photoUrl'],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             },
@@ -143,18 +213,5 @@ class SpecialistListPage extends StatelessWidget {
         },
       ),
     );
-  }
-
-  String _serviceLabel(String value) {
-    switch (value) {
-      case 'telemedicina':
-        return 'Telemedicina';
-      case 'consultorio':
-        return 'Consultorio';
-      case 'domicilio':
-        return 'Domicilio';
-      default:
-        return value;
-    }
   }
 }
