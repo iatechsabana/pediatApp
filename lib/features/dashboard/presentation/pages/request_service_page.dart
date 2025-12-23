@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'specialist_list_page.dart';
 
 class RequestServicePage extends StatelessWidget {
   const RequestServicePage({super.key});
@@ -22,36 +23,45 @@ class RequestServicePage extends StatelessWidget {
             const SizedBox(height: 32),
             _serviceCard(
               context,
-              icon: Icons.chat,
-              title: 'Chat con especialista',
-              color: Colors.teal,
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Función de chat próximamente')),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            _serviceCard(
-              context,
               icon: Icons.video_call,
               title: 'Teleconsulta',
               color: Colors.blue,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Función de teleconsulta próximamente')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SpecialistListPage(service: 'telemedicina'),
+                  ),
                 );
               },
             ),
             const SizedBox(height: 24),
             _serviceCard(
               context,
-              icon: Icons.person_search,
-              title: 'Contactar especialista',
+              icon: Icons.local_hospital,
+              title: 'Consultorio',
+              color: Colors.teal,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SpecialistListPage(service: 'consultorio'),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            _serviceCard(
+              context,
+              icon: Icons.home,
+              title: 'Domicilio',
               color: Colors.orange,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Función de contactar especialista próximamente')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SpecialistListPage(service: 'domicilio'),
+                  ),
                 );
               },
             ),
