@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'pediatrician_threads_page.dart';
 import 'pediatrician_profile_page.dart';
+import 'pediatrician_notifications_page.dart';
 import '../../../chat/presentation/user_select_page.dart';
 import '../../../chat/presentation/chat_pages.dart';
 
@@ -102,43 +103,60 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
                 tooltip: 'Chat entre colegas',
                 onPressed: () async {
                   final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-                  final selectedUserId = await Navigator.push(
+                  final dynamic result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const UserSelectPage()),
                   );
-                  if (selectedUserId != null && selectedUserId != currentUserId) {
-                    // Buscar o crear chat y navegar
-                    final chatsQuery = await FirebaseFirestore.instance
-                        .collection('chats')
-                        .where('participants', arrayContains: currentUserId)
-                        .get();
-                    String? chatId;
-                    for (var doc in chatsQuery.docs) {
-                      final participants = List<String>.from(doc['participants'] ?? []);
-                      if (participants.contains(selectedUserId)) {
-                        chatId = doc.id;
-                        break;
-                      }
-                    }
-                    if (chatId == null) {
-                      final newChat = await FirebaseFirestore.instance.collection('chats').add({
-                        'participants': [currentUserId, selectedUserId],
-                        'createdAt': FieldValue.serverTimestamp(),
-                        'updatedAt': FieldValue.serverTimestamp(),
-                      });
-                      chatId = newChat.id;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatConversationPage(
-                          chatId: chatId!,
-                          currentUserId: currentUserId!,
-                          otherUserId: selectedUserId,
-                        ),
-                      ),
+                  final String? selectedUserId = (result is String && result.isNotEmpty) ? result : null;
+                  if (selectedUserId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Debes seleccionar un usuario válido para chatear.')),
                     );
+                    return;
                   }
+                  if (selectedUserId == currentUserId || currentUserId == null || currentUserId.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No se puede iniciar el chat: usuario inválido.')),
+                    );
+                    return;
+                  }
+                  // Buscar o crear chat y navegar
+                  final chatsQuery = await FirebaseFirestore.instance
+                      .collection('chats')
+                      .where('participants', arrayContains: currentUserId)
+                      .get();
+                  String? chatId;
+                  for (var doc in chatsQuery.docs) {
+                    final participants = List<String>.from(doc['participants'] ?? []);
+                    if (participants.contains(selectedUserId)) {
+                      chatId = doc.id;
+                      break;
+                    }
+                  }
+                  if (chatId == null) {
+                    final newChat = await FirebaseFirestore.instance.collection('chats').add({
+                      'participants': [currentUserId, selectedUserId],
+                      'createdAt': FieldValue.serverTimestamp(),
+                      'updatedAt': FieldValue.serverTimestamp(),
+                    });
+                    chatId = newChat.id;
+                  }
+                  if (chatId == null || chatId.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No se pudo crear el chat.')), 
+                    );
+                    return;
+                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatConversationPage(
+                        chatId: chatId!,
+                        currentUserId: currentUserId!,
+                        otherUserId: selectedUserId!,
+                      ),
+                    ),
+                  );
                 },
               ),
             ],
@@ -162,7 +180,6 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
       Column(
         children: [
           _buildHeader(context),
-          // Eliminar espacio extra
           Expanded(
             child: PediatricianThreadsPage(
               onTapOwnProfile: () => setState(() => _selectedIndex = 0),
@@ -170,9 +187,12 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
           ),
         ],
       ),
+      // Notificaciones
+      PediatricianNotificationsPage(),
+      // Historia clínica (puedes crear una página más completa luego)
       Center(
         child: Text(
-          'Citas programadas',
+          'Historia clínica',
           style: TextStyle(fontSize: 20, color: Colors.teal),
         ),
       ),
@@ -197,6 +217,7 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
           selectedItemColor: Colors.teal,
           unselectedItemColor: Colors.grey,
           showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.person),
@@ -207,8 +228,12 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
               label: 'Comunidad',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month),
-              label: 'Citas',
+              icon: Icon(Icons.notifications),
+              label: 'Notificaciones',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history_edu),
+              label: 'Historia clínica',
             ),
           ],
         ),

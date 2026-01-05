@@ -184,6 +184,10 @@ class SpecialistListPage extends StatelessWidget {
                                           return;
                                         }
                                         // Crear notificación en Firestore para el médico
+                                        debugPrint('Enviando notificación: toUserId=$toUserId, fromUserId=${user.uid}');
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Enviando notificación a: $toUserId')),
+                                        );
                                         await FirebaseFirestore.instance.collection('notifications').add({
                                           'toUserId': toUserId,
                                           'fromUserId': user.uid,
