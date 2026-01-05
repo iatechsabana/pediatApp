@@ -130,11 +130,38 @@ class SpecialistListPage extends StatelessWidget {
                                           return;
                                         }
                                         if (user != null) {
+                                          // Buscar o crear chat
+                                          final chatsQuery = await FirebaseFirestore.instance
+                                              .collection('chats')
+                                              .where('participants', arrayContains: user.uid)
+                                              .get();
+                                          String? chatId;
+                                          for (var doc in chatsQuery.docs) {
+                                            final participants = List<String>.from(doc['participants'] ?? []);
+                                            if (participants.contains(toUserId)) {
+                                              chatId = doc.id;
+                                              break;
+                                            }
+                                          }
+                                          if (chatId == null) {
+                                            final newChat = await FirebaseFirestore.instance.collection('chats').add({
+                                              'participants': [user.uid, toUserId],
+                                              'createdAt': FieldValue.serverTimestamp(),
+                                              'updatedAt': FieldValue.serverTimestamp(),
+                                            });
+                                            chatId = newChat.id;
+                                          }
+                                          if (chatId == null || chatId.isEmpty) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('No se pudo crear el chat.')),
+                                            );
+                                            return;
+                                          }
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                               builder: (_) => ChatConversationPage(
-                                                chatId: '',
+                                                chatId: chatId!,
                                                 currentUserId: user.uid,
                                                 otherUserId: toUserId,
                                               ),
