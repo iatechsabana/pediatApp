@@ -15,17 +15,67 @@ class PediatricianProfilePage extends StatefulWidget {
 class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
   bool isEditingAbout = false;
   late TextEditingController aboutController;
+  Map<String, Map<String, TimeOfDay?>> consultorioSchedule = {};
+  final List<String> weekDays = [
+    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+  ];
 
   @override
   void initState() {
     super.initState();
     aboutController = TextEditingController();
+    _loadConsultorioSchedule();
   }
 
   @override
   void dispose() {
     aboutController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadConsultorioSchedule() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final data = doc.data();
+    if (data != null && data['consultorioSchedule'] != null) {
+      final sched = Map<String, dynamic>.from(data['consultorioSchedule']);
+      final Map<String, Map<String, TimeOfDay?>> tempSchedule = {};
+      sched.forEach((day, times) {
+        final t = Map<String, dynamic>.from(times);
+        tempSchedule[day] = {
+          'from': t['from'] != null ? _parseTimeOfDay(t['from']) : null,
+          'to': t['to'] != null ? _parseTimeOfDay(t['to']) : null,
+        };
+      });
+      consultorioSchedule = tempSchedule;
+      setState(() {});
+    }
+  }
+
+  TimeOfDay? _parseTimeOfDay(String? s) {
+    if (s == null) return null;
+    final parts = s.split(':');
+    if (parts.length != 2) return null;
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  }
+
+  String _formatTimeOfDay(TimeOfDay? t) {
+    if (t == null) return '--:--';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}' ;
+  }
+
+  Future<void> _saveConsultorioSchedule() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final sched = consultorioSchedule.map((day, times) => MapEntry(day, {
+      'from': times['from'] != null ? _formatTimeOfDay(times['from']) : null,
+      'to': times['to'] != null ? _formatTimeOfDay(times['to']) : null,
+    }));
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'consultorioSchedule': sched,
+    });
+    setState(() {});
   }
 
   // ===================== FIRESTORE =====================
@@ -341,9 +391,12 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
       {'icon': Icons.home, 'label': 'Domicilio', 'value': 'domicilio'},
     ];
 
+    final showConsultorioSchedule = selected.contains('consultorio');
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
+      child: Column(
+        children: [
+          Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -396,6 +449,77 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
             ),
           ],
         ),
+      ),
+          if (showConsultorioSchedule) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.teal.shade100),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Horario de atención en consultorio',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  ...weekDays.map((day) {
+                    final times = consultorioSchedule[day] ?? {'from': null, 'to': null};
+                    return Row(
+                      children: [
+                        Expanded(child: Text(day)),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: times['from'] ?? TimeOfDay(hour: 8, minute: 0),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                consultorioSchedule[day] = {
+                                  'from': picked,
+                                  'to': times['to']
+                                };
+                              });
+                            }
+                          },
+                          child: Text('Desde: ' + _formatTimeOfDay(times['from'])),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: times['to'] ?? TimeOfDay(hour: 17, minute: 0),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                consultorioSchedule[day] = {
+                                  'from': times['from'],
+                                  'to': picked
+                                };
+                              });
+                            }
+                          },
+                          child: Text('Hasta: ' + _formatTimeOfDay(times['to'])),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: _saveConsultorioSchedule,
+                    icon: const Icon(Icons.save),
+                    label: const Text('Guardar horario'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
