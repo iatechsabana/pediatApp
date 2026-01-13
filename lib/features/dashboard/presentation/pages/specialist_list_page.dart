@@ -233,7 +233,7 @@ class SpecialistListPage extends StatelessWidget {
                                 ],
                               ),
                             ),
-                          if (service == 'consultorio')
+                          if (service == 'consultorio' || service == 'domicilio')
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: SizedBox(
@@ -254,7 +254,7 @@ class SpecialistListPage extends StatelessWidget {
                                         builder: (_) => DoctorCalendarPage(
                                           doctorId: docs[i].id,
                                           doctorName: name,
-                                          mode: 'consultorio',
+                                          mode: service,
                                         ),
                                       ),
                                     );
