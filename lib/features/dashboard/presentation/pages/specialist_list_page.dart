@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'public_profile_page.dart';
 import '../../../chat/presentation/chat_pages.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'doctor_calendar_page.dart'; // <-- Import agregado
 
 
 class SpecialistListPage extends StatelessWidget {
@@ -230,6 +231,35 @@ class SpecialistListPage extends StatelessWidget {
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                          if (service == 'consultorio')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: SizedBox(
+                                width: 180,
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.calendar_month),
+                                  label: const Text('Agendar cita', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.teal,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(40, 36),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => DoctorCalendarPage(
+                                          doctorId: docs[i].id,
+                                          doctorName: name,
+                                          mode: 'consultorio',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                         ],
