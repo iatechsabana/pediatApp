@@ -12,19 +12,27 @@ class PediatricianProfilePage extends StatefulWidget {
   State<PediatricianProfilePage> createState() =>
       _PediatricianProfilePageState();
 }
+
 class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
   bool isEditingAbout = false;
   late TextEditingController aboutController;
   Map<String, Map<String, TimeOfDay?>> consultorioSchedule = {};
+  Map<String, Map<String, TimeOfDay?>> domicilioSchedule = {};
   final List<String> weekDays = [
-    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo',
   ];
 
   @override
   void initState() {
     super.initState();
     aboutController = TextEditingController();
-    _loadConsultorioSchedule();
+    _loadSchedules();
   }
 
   @override
@@ -33,11 +41,15 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
     super.dispose();
   }
 
-  Future<void> _loadConsultorioSchedule() async {
+  Future<void> _loadSchedules() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
     final data = doc.data();
+    // Consultorio
     if (data != null && data['consultorioSchedule'] != null) {
       final sched = Map<String, dynamic>.from(data['consultorioSchedule']);
       final Map<String, Map<String, TimeOfDay?>> tempSchedule = {};
@@ -49,8 +61,25 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
         };
       });
       consultorioSchedule = tempSchedule;
-      setState(() {});
+    } else {
+      consultorioSchedule = {};
     }
+    // Domicilio
+    if (data != null && data['domicilioSchedule'] != null) {
+      final sched = Map<String, dynamic>.from(data['domicilioSchedule']);
+      final Map<String, Map<String, TimeOfDay?>> tempSchedule = {};
+      sched.forEach((day, times) {
+        final t = Map<String, dynamic>.from(times);
+        tempSchedule[day] = {
+          'from': t['from'] != null ? _parseTimeOfDay(t['from']) : null,
+          'to': t['to'] != null ? _parseTimeOfDay(t['to']) : null,
+        };
+      });
+      domicilioSchedule = tempSchedule;
+    } else {
+      domicilioSchedule = {};
+    }
+    setState(() {});
   }
 
   TimeOfDay? _parseTimeOfDay(String? s) {
@@ -62,18 +91,35 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
 
   String _formatTimeOfDay(TimeOfDay? t) {
     if (t == null) return '--:--';
-    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}' ;
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _saveConsultorioSchedule() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final sched = consultorioSchedule.map((day, times) => MapEntry(day, {
-      'from': times['from'] != null ? _formatTimeOfDay(times['from']) : null,
-      'to': times['to'] != null ? _formatTimeOfDay(times['to']) : null,
-    }));
+    final sched = consultorioSchedule.map(
+      (day, times) => MapEntry(day, {
+        'from': times['from'] != null ? _formatTimeOfDay(times['from']) : null,
+        'to': times['to'] != null ? _formatTimeOfDay(times['to']) : null,
+      }),
+    );
     await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
       'consultorioSchedule': sched,
+    });
+    setState(() {});
+  }
+
+  Future<void> _saveDomicilioSchedule() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final sched = domicilioSchedule.map(
+      (day, times) => MapEntry(day, {
+        'from': times['from'] != null ? _formatTimeOfDay(times['from']) : null,
+        'to': times['to'] != null ? _formatTimeOfDay(times['to']) : null,
+      }),
+    );
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      'domicilioSchedule': sched,
     });
     setState(() {});
   }
@@ -215,10 +261,10 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
             radius: 50,
             backgroundImage:
                 data['photoUrl'] != null &&
-                        data['photoUrl'].toString().isNotEmpty
-                    ? NetworkImage(data['photoUrl'])
-                    : const AssetImage('assets/images/doctorkids_logo.png')
-                        as ImageProvider,
+                    data['photoUrl'].toString().isNotEmpty
+                ? NetworkImage(data['photoUrl'])
+                : const AssetImage('assets/images/doctorkids_logo.png')
+                      as ImageProvider,
           ),
           const SizedBox(height: 12),
           Text(
@@ -290,7 +336,11 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.location_city, size: 16, color: Colors.white70),
+                const Icon(
+                  Icons.location_city,
+                  size: 16,
+                  color: Colors.white70,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   data['city'] ?? '',
@@ -392,64 +442,65 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
     ];
 
     final showConsultorioSchedule = selected.contains('consultorio');
+    final showDomicilioSchedule = selected.contains('domicilio');
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
           Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Servicios",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
             ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: servicios.map((serv) {
-                final isChecked = selected.contains(serv['value']);
-                return GestureDetector(
-                  onTap: () => _updateServicios(
-                    selected,
-                    serv['value'] as String,
-                    !isChecked,
-                    user,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 26,
-                        backgroundColor: isChecked
-                            ? Colors.teal.shade100
-                            : Colors.grey.shade200,
-                        child: Icon(
-                          serv['icon'] as IconData,
-                          color: isChecked ? Colors.teal : Colors.grey,
-                        ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Servicios",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: servicios.map((serv) {
+                    final isChecked = selected.contains(serv['value']);
+                    return GestureDetector(
+                      onTap: () => _updateServicios(
+                        selected,
+                        serv['value'] as String,
+                        !isChecked,
+                        user,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        serv['label'] as String,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 26,
+                            backgroundColor: isChecked
+                                ? Colors.teal.shade100
+                                : Colors.grey.shade200,
+                            child: Icon(
+                              serv['icon'] as IconData,
+                              color: isChecked ? Colors.teal : Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            serv['label'] as String,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
           if (showConsultorioSchedule) ...[
             const SizedBox(height: 20),
             Container(
@@ -468,7 +519,8 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
                   ),
                   const SizedBox(height: 10),
                   ...weekDays.map((day) {
-                    final times = consultorioSchedule[day] ?? {'from': null, 'to': null};
+                    final times =
+                        consultorioSchedule[day] ?? {'from': null, 'to': null};
                     return Row(
                       children: [
                         Expanded(child: Text(day)),
@@ -476,35 +528,42 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
                           onPressed: () async {
                             final picked = await showTimePicker(
                               context: context,
-                              initialTime: times['from'] ?? TimeOfDay(hour: 8, minute: 0),
+                              initialTime:
+                                  times['from'] ??
+                                  TimeOfDay(hour: 8, minute: 0),
                             );
                             if (picked != null) {
                               setState(() {
                                 consultorioSchedule[day] = {
                                   'from': picked,
-                                  'to': times['to']
+                                  'to': times['to'],
                                 };
                               });
                             }
                           },
-                          child: Text('Desde: ' + _formatTimeOfDay(times['from'])),
+                          child: Text(
+                            'Desde: ' + _formatTimeOfDay(times['from']),
+                          ),
                         ),
                         TextButton(
                           onPressed: () async {
                             final picked = await showTimePicker(
                               context: context,
-                              initialTime: times['to'] ?? TimeOfDay(hour: 17, minute: 0),
+                              initialTime:
+                                  times['to'] ?? TimeOfDay(hour: 17, minute: 0),
                             );
                             if (picked != null) {
                               setState(() {
                                 consultorioSchedule[day] = {
                                   'from': times['from'],
-                                  'to': picked
+                                  'to': picked,
                                 };
                               });
                             }
                           },
-                          child: Text('Hasta: ' + _formatTimeOfDay(times['to'])),
+                          child: Text(
+                            'Hasta: ' + _formatTimeOfDay(times['to']),
+                          ),
                         ),
                       ],
                     );
@@ -512,6 +571,83 @@ class _PediatricianProfilePageState extends State<PediatricianProfilePage> {
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed: _saveConsultorioSchedule,
+                    icon: const Icon(Icons.save),
+                    label: const Text('Guardar horario'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (showDomicilioSchedule) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.teal.shade100),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Horario de atención a domicilio',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  ...weekDays.map((day) {
+                    final times =
+                        domicilioSchedule[day] ?? {'from': null, 'to': null};
+                    return Row(
+                      children: [
+                        Expanded(child: Text(day)),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime:
+                                  times['from'] ??
+                                  TimeOfDay(hour: 8, minute: 0),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                domicilioSchedule[day] = {
+                                  'from': picked,
+                                  'to': times['to'],
+                                };
+                              });
+                            }
+                          },
+                          child: Text(
+                            'Desde: ' + _formatTimeOfDay(times['from']),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime:
+                                  times['to'] ?? TimeOfDay(hour: 17, minute: 0),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                domicilioSchedule[day] = {
+                                  'from': times['from'],
+                                  'to': picked,
+                                };
+                              });
+                            }
+                          },
+                          child: Text(
+                            'Hasta: ' + _formatTimeOfDay(times['to']),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: _saveDomicilioSchedule,
                     icon: const Icon(Icons.save),
                     label: const Text('Guardar horario'),
                   ),
