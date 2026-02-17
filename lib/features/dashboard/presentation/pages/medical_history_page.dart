@@ -5,7 +5,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
 
 class MedicalHistoryPage extends StatefulWidget {
-  const MedicalHistoryPage({super.key});
+  final bool readOnly;
+  const MedicalHistoryPage({super.key, this.readOnly = true});
 
   @override
   State<MedicalHistoryPage> createState() => _MedicalHistoryPageState();
@@ -62,6 +63,7 @@ class _MedicalHistoryPageState extends State<MedicalHistoryPage> {
   //   GUARDAR FORMULARIO
   // ============================================================
   Future<void> _save() async {
+    if (widget.readOnly) return;
     if (_formKey.currentState?.validate() ?? false) {
       await FirebaseFirestore.instance.collection('medical_history').doc(_user!.uid).set({
         'allergies': _allergiesController.text.trim(),
@@ -146,102 +148,109 @@ class _MedicalHistoryPageState extends State<MedicalHistoryPage> {
                     _sectionCard(
                       icon: Icons.warning_amber_outlined,
                       title: 'Alergias',
-                      child: TextFormField(
-                        controller: _allergiesController,
-                        decoration: const InputDecoration(
-                          labelText: 'Alergias (si aplica)',
-                          border: OutlineInputBorder(),
+                        child: TextFormField(
+                          controller: _allergiesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Alergias (si aplica)',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: !widget.readOnly,
                         ),
-                        maxLines: 2,
-                      ),
                     ),
                     const SizedBox(height: AppDimens.paddingMedium),
                     _sectionCard(
                       icon: Icons.healing_outlined,
                       title: 'Enfermedades crónicas',
-                      child: TextFormField(
-                        controller: _chronicController,
-                        decoration: const InputDecoration(
-                          labelText: 'Enfermedades crónicas',
-                          border: OutlineInputBorder(),
+                        child: TextFormField(
+                          controller: _chronicController,
+                          decoration: const InputDecoration(
+                            labelText: 'Enfermedades crónicas',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: !widget.readOnly,
                         ),
-                        maxLines: 2,
-                      ),
                     ),
                     const SizedBox(height: AppDimens.paddingMedium),
                     _sectionCard(
                       icon: Icons.local_hospital_outlined,
                       title: 'Cirugías previas',
-                      child: TextFormField(
-                        controller: _surgeryController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cirugías previas',
-                          border: OutlineInputBorder(),
+                        child: TextFormField(
+                          controller: _surgeryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Cirugías previas',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: !widget.readOnly,
                         ),
-                        maxLines: 2,
-                      ),
                     ),
                     const SizedBox(height: AppDimens.paddingMedium),
                     _sectionCard(
                       icon: Icons.medication_outlined,
                       title: 'Medicamentos actuales',
-                      child: TextFormField(
-                        controller: _medsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Medicamentos actuales',
-                          border: OutlineInputBorder(),
+                        child: TextFormField(
+                          controller: _medsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Medicamentos actuales',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: !widget.readOnly,
                         ),
-                        maxLines: 2,
-                      ),
                     ),
                     const SizedBox(height: AppDimens.paddingMedium),
                     _sectionCard(
                       icon: Icons.vaccines_outlined,
                       title: 'Vacunas',
-                      child: TextFormField(
-                        controller: _vaccinesController,
-                        decoration: const InputDecoration(
-                          labelText: 'Vacunas (fecha / tipo)',
-                          border: OutlineInputBorder(),
+                        child: TextFormField(
+                          controller: _vaccinesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Vacunas (fecha / tipo)',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          enabled: !widget.readOnly,
                         ),
-                        maxLines: 2,
-                      ),
                     ),
                     const SizedBox(height: AppDimens.paddingMedium),
                     _sectionCard(
                       icon: Icons.notes_outlined,
                       title: 'Observaciones adicionales',
-                      child: TextFormField(
-                        controller: _notesController,
-                        decoration: const InputDecoration(
-                          labelText: 'Observaciones adicionales',
-                          border: OutlineInputBorder(),
+                        child: TextFormField(
+                          controller: _notesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Observaciones adicionales',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 4,
+                          enabled: !widget.readOnly,
                         ),
-                        maxLines: 4,
-                      ),
                     ),
                     const SizedBox(height: AppDimens.paddingLarge),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _save,
-                        icon: const Icon(Icons.save),
-                        label: const Text(
-                          'Guardar antecedentes',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.textWhite,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppDimens.buttonHeight / 2,
+                    if (!widget.readOnly)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _save,
+                          icon: const Icon(Icons.save),
+                          label: const Text(
+                            'Guardar antecedentes',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.textWhite,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppDimens.buttonHeight / 2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jitsi_meet/jitsi_meet.dart';
+import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
 
 class VideoCallPage extends StatelessWidget {
   final String roomCode;
@@ -15,9 +15,14 @@ class VideoCallPage extends StatelessWidget {
           icon: const Icon(Icons.video_call),
           label: const Text('Unirse a la videollamada'),
           onPressed: () async {
-            await JitsiMeet.joinMeeting(
-              JitsiMeetingOptions(room: roomCode)
-                ..userDisplayName = userName,
+            await JitsiMeetWrapper.joinMeeting(
+              options: JitsiMeetingOptions(
+                roomNameOrUrl: roomCode,
+                userDisplayName: userName,
+                subject: 'Videollamada',
+                isAudioMuted: false,
+                isVideoMuted: false,
+              ),
             );
           },
         ),

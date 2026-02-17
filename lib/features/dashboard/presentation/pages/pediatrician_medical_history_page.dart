@@ -64,7 +64,18 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
       'conclusiones': _conclusionesController.text.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Historia clínica guardada')));
+
+    // Enviar notificación al usuario (padre/madre) avisando que la historia está disponible
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'toUserId': widget.patientId,
+      'fromUserId': user.uid,
+      'type': 'historia_clinica',
+      'message': 'La historia clínica de ${widget.patientName} ha sido actualizada y está disponible.',
+      'timestamp': FieldValue.serverTimestamp(),
+      'userName': user.displayName ?? 'Pediatra',
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Historia clínica guardada y notificada al usuario')));
   }
 
   @override
