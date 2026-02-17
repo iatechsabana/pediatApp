@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:collection';
-import 'pediatrician_medical_history_page.dart';
+
+import 'video_call_page.dart';
 
 class PediatricianNotificationsPage extends StatefulWidget {
   const PediatricianNotificationsPage({super.key});
@@ -17,6 +17,46 @@ class _PediatricianNotificationsPageState
   /// Caché local de notificaciones
   final Map<String, Map<String, dynamic>> _localNotifications = {};
 
+  bool _loggedUid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Muestra UID una sola vez (evita spam en cada rebuild)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (!mounted || user == null || _loggedUid) return;
+      _loggedUid = true;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('UID autenticado: ${user.uid}')));
+      debugPrint('UID autenticado: ${user.uid}');
+    });
+  }
+
+  Future<void> _deleteNotification({
+    required String notificationId,
+    required AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot,
+  }) async {
+    // Eliminar del caché local primero (UI inmediata)
+    setState(() {
+      _localNotifications.remove(notificationId);
+    });
+
+    // Eliminar del backend
+    final docs = snapshot.data?.docs ?? [];
+    QueryDocumentSnapshot<Map<String, dynamic>>? docToDelete;
+    try {
+      docToDelete = docs.firstWhere((doc) => doc.id == notificationId);
+    } catch (_) {
+      docToDelete = null;
+    }
+    if (docToDelete != null) {
+      await docToDelete.reference.delete();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -24,23 +64,10 @@ class _PediatricianNotificationsPageState
     if (user == null) {
       return const Scaffold(
         body: Center(
-          child: Text(
-            'Usuario no autenticado',
-            style: TextStyle(fontSize: 16),
-          ),
+          child: Text('Usuario no autenticado', style: TextStyle(fontSize: 16)),
         ),
       );
     }
-
-    /// Log visual del UID del usuario autenticado
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('UID autenticado: ${user.uid}'),
-        ),
-      );
-      debugPrint('UID autenticado: ${user.uid}');
-    });
 
     return Scaffold(
       appBar: AppBar(
@@ -58,22 +85,22 @@ class _PediatricianNotificationsPageState
             return const Center(child: CircularProgressIndicator());
           }
 
-          /// Actualizar el caché local con las notificaciones recibidas
+          // Actualizar caché local
           if (snapshot.hasData) {
             for (final doc in snapshot.data!.docs) {
               _localNotifications[doc.id] = doc.data();
             }
           }
 
-          /// Obtener y ordenar notificaciones desde el caché local
+          // Ordenar desde caché
           final notifications = _localNotifications.entries.toList()
             ..sort((a, b) {
               final ta =
                   (a.value['timestamp'] as Timestamp?)?.toDate() ??
-                      DateTime.now();
+                  DateTime.fromMillisecondsSinceEpoch(0);
               final tb =
                   (b.value['timestamp'] as Timestamp?)?.toDate() ??
-                      DateTime.now();
+                  DateTime.fromMillisecondsSinceEpoch(0);
               return tb.compareTo(ta);
             });
 
@@ -94,12 +121,17 @@ class _PediatricianNotificationsPageState
               final id = notifications[i].key;
               final data = notifications[i].value;
 
-              final type = data['type'] ?? '';
-              final message = data['message'] ?? '';
-              final userName = data['userName'] ?? '';
-              final toUserId = data['toUserId'] ?? '';
-              final timestamp =
-                  (data['timestamp'] as Timestamp?)?.toDate();
+              final type = (data['type'] ?? '').toString();
+              final message = (data['message'] ?? '').toString();
+              final userName = (data['userName'] ?? '').toString();
+              final toUserId = (data['toUserId'] ?? '').toString();
+
+              // ✅ Ajusta estos campos según tu estructura real:
+              final patientId = (data['patientId'] ?? data['fromUserId'] ?? '')
+                  .toString();
+              final patientName = userName;
+
+              final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
 
               IconData icon = Icons.notifications;
               Color color = Colors.teal;
@@ -163,7 +195,18 @@ class _PediatricianNotificationsPageState
                         )
                       : null,
                   onTap: () async {
-                    /// Mostrar el mensaje completo y confirmar acción
+                    // Validación rápida
+                    if (toUserId != user.uid) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Esta notificación no corresponde a tu usuario.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -182,107 +225,93 @@ class _PediatricianNotificationsPageState
                               const SizedBox(height: 8),
                               Text(
                                 'Enviado por: $userName',
-                                style: const TextStyle(
-                                  color: Colors.black54,
-                                ),
+                                style: const TextStyle(color: Colors.black54),
                               ),
                             ],
                           ],
                         ),
                         actions: [
                           TextButton(
-                            onPressed: () =>
-                                Navigator.pop(ctx, false),
+                            onPressed: () => Navigator.pop(ctx, false),
                             child: const Text('Cerrar'),
                           ),
                           ElevatedButton(
-                            onPressed: () =>
-                                Navigator.pop(ctx, true),
-                            child:
-                                const Text('Ir a historia clínica'),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: type == 'videollamada'
+                                ? const Text('Iniciar videollamada')
+                                : const Text('Ir a historia clínica'),
                           ),
                         ],
                       ),
                     );
 
-                    if (confirm == true) {
-                      final user =
-                          FirebaseAuth.instance.currentUser;
-                      final patientId =
-                          data['fromUserId'] ?? '';
-                      final patientName =
-                          data['userName'] ?? '';
-                      final toUserId =
-                          data['toUserId'] ?? '';
+                    if (confirm != true) return;
 
-                      if (user != null &&
-                          patientId.isNotEmpty &&
-                          toUserId == user.uid) {
-                        final docRef = FirebaseFirestore
-                            .instance
-                            .collection('medical_histories')
-                            .doc(
-                                '${user.uid}_$patientId');
-
-                        await docRef.set(
-                          {
-                            'pediatricianId': user.uid,
-                            'patientId': patientId,
-                            'patientName': patientName,
-                            'updatedAt': FieldValue
-                                .serverTimestamp(),
-                          },
-                          SetOptions(merge: true),
-                        );
-
-                        /// Eliminar notificación del caché local
-                        setState(() {
-                          _localNotifications.remove(id);
-                        });
-
-                        /// Eliminar notificación de Firestore
-                        final docs =
-                            snapshot.data?.docs ?? [];
-                        QueryDocumentSnapshot<
-                                Map<String, dynamic>>?
-                            docToDelete;
-
-                        try {
-                          docToDelete = docs.firstWhere(
-                              (doc) => doc.id == id);
-                        } catch (_) {
-                          docToDelete = null;
-                        }
-
-                        if (docToDelete != null) {
-                          await docToDelete.reference.delete();
-                        }
-
-                        /// Navegar a la historia clínica
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                PediatricianMedicalHistoryPage(
-                              patientId: patientId,
-                              patientName:
-                                  patientName.isNotEmpty
-                                      ? patientName
-                                      : 'Paciente',
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(
+                    if (type == 'videollamada') {
+                      if (patientId.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
-                              'Esta notificación no corresponde a tu usuario.',
+                              'No se encontró el patientId en la notificación.',
                             ),
                           ),
                         );
+                        return;
                       }
+
+                      // Room único y consistente (médico + paciente)
+                      final roomCode = '${user.uid}_$patientId';
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => VideoCallPage(
+                            roomCode: roomCode,
+                            userName: user.displayName ?? 'Médico',
+                          ),
+                        ),
+                      );
+
+                      await _deleteNotification(
+                        notificationId: id,
+                        snapshot: snapshot,
+                      );
+                      return;
                     }
+
+                    // Otros tipos: crear/actualizar historia clínica
+                    if (patientId.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'No se encontró el patientId en la notificación.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final docRef = FirebaseFirestore.instance
+                        .collection('medical_histories')
+                        .doc('${user.uid}_$patientId');
+
+                    await docRef.set({
+                      'pediatricianId': user.uid,
+                      'patientId': patientId,
+                      'patientName': patientName.isNotEmpty
+                          ? patientName
+                          : 'Paciente',
+                      'updatedAt': FieldValue.serverTimestamp(),
+                    }, SetOptions(merge: true));
+
+                    await _deleteNotification(
+                      notificationId: id,
+                      snapshot: snapshot,
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Historia actualizada.')),
+                    );
                   },
                 ),
               );

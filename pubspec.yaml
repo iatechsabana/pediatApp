@@ -52,6 +52,9 @@ dependencies:
   image_picker: ^1.0.7
   permission_handler: ^11.3.0
 
+  # Para videollamadas con Jitsi Meet
+  jitsi_meet: ^4.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

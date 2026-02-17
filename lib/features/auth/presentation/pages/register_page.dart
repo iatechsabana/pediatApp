@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+// ...existing code...
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -10,7 +10,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/document_picker_stub.dart';
-import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:url_launcher/url_launcher.dart';
 import 'login_page.dart';
 
 // =======================================================
@@ -121,8 +121,8 @@ class _RegisterPageState extends State<RegisterPage> {
       DateTime? _birthDate;
     DateTime? _startDate;
   Future<void> launchUrlCustom(Uri url) async {
-    if (await url_launcher.canLaunch(url.toString())) {
-      await url_launcher.launch(url.toString());
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se pudo abrir el enlace.')),
