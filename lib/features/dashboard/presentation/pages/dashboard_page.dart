@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import '../../../assistant/presentation/pages/assistant_page.dart';
@@ -8,6 +9,7 @@ import 'medical_history_page.dart';
 import 'family_core_page.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
+import './_thread_comments_widget.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -20,25 +22,13 @@ class _DashboardPageState extends State<DashboardPage> {
   // ============================================================
   //   Mock data (SUSTITUIR por datos reales desde Firebase)
   // ============================================================
-  int hijosRegistrados = 2;
+  int hijosRegistrados = 2; // TODO: Reemplazar por valor real desde FamilyCorePage
   int creditosDisponibles = 50;
   int creditosUsadosMes = 7;
   double balance = 125000;
   double usoMensual = 86;
 
-  final List<Map<String, String>> notasSociales = [
-    {
-      "titulo": "Control de crecimiento",
-      "fecha": "Hoy",
-      "autor": "Dra. Martínez",
-    },
-    {"titulo": "Nota de alimentación", "fecha": "Ayer", "autor": "Dr. López"},
-    {
-      "titulo": "Seguimiento respiratorio",
-      "fecha": "Hace 3 días",
-      "autor": "Dra. Gómez",
-    },
-  ];
+  // Las notas ahora se obtendrán en tiempo real desde Firestore
 
   @override
   Widget build(BuildContext context) {
@@ -186,10 +176,24 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Column(
                 children: [
                   _buildMetricDashboard(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.family_restroom, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Hijos registrados: $hijosRegistrados",
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.teal),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   _buildUsageCard(),
                   const SizedBox(height: 16),
-                  _buildNotasSociales(),
+                  SizedBox(
+                    height: 340,
+                    child: _buildThreadsWithComments(),
+                  ),
                 ],
               ),
             ),
@@ -385,41 +389,58 @@ class _DashboardPageState extends State<DashboardPage> {
   // ============================================================
   //   NOTAS SOCIALES (TIMELINE)
   // ============================================================
-  Widget _buildNotasSociales() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.timeline, color: AppColors.primary),
-              SizedBox(width: 6),
-              Text(
-                "Notas sociales de pediatras",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          ...notasSociales.map(
-            (nota) => ListTile(
-              leading: const Icon(
-                Icons.note_alt_outlined,
-                color: AppColors.primary,
-              ),
-              title: Text(nota["titulo"]!),
-              subtitle: Text("${nota["fecha"]} • ${nota["autor"]}"),
-            ),
-          ),
-        ],
-      ),
+  // Mostrar publicaciones de médicos (threads) y permitir solo comentar
+  Widget _buildThreadsWithComments() {
+    return StreamBuilder(
+      stream: FirebaseFirestore.instance.collection('threads').orderBy('createdAt', descending: true).snapshots(),
+      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final threads = snapshot.data?.docs ?? [];
+        if (threads.isEmpty) {
+          return const Center(child: Text('No hay publicaciones de médicos.'));
+        }
+        return ListView.builder(
+          itemCount: threads.length,
+          itemBuilder: (context, i) {
+            final data = threads[i].data() as Map<String, dynamic>;
+            final threadId = threads[i].id;
+            final String author = data['authorName'] ?? 'Médico';
+            final String content = data['content'] ?? '';
+            DateTime? createdAt;
+            if (data['createdAt'] is Timestamp) {
+              createdAt = (data['createdAt'] as Timestamp).toDate();
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.note_alt_outlined,
+                    color: AppColors.primary,
+                  ),
+                  title: Text(author),
+                  subtitle: Text(createdAt != null ? '${createdAt.day}/${createdAt.month}/${createdAt.year}' : ''),
+                  isThreeLine: true,
+                  trailing: null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  child: Text(content, style: const TextStyle(fontSize: 15)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 8, bottom: 8),
+                  child: ThreadCommentsWidget(threadId: threadId),
+                ),
+                const Divider(),
+              ],
+            );
+          },
+        );
+      },
     );
   }
+
+// ...existing code...
 }
