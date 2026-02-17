@@ -17,22 +17,10 @@ class _PediatricianNotificationsPageState
   /// Caché local de notificaciones
   final Map<String, Map<String, dynamic>> _localNotifications = {};
 
-  bool _loggedUid = false;
-
   @override
   void initState() {
     super.initState();
-    // Muestra UID una sola vez (evita spam en cada rebuild)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (!mounted || user == null || _loggedUid) return;
-      _loggedUid = true;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('UID autenticado: ${user.uid}')));
-      debugPrint('UID autenticado: ${user.uid}');
-    });
+    // Eliminado mensaje de UID autenticado
   }
 
   Future<void> _deleteNotification({

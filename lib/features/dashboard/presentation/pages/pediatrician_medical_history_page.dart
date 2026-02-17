@@ -5,13 +5,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 class PediatricianMedicalHistoryPage extends StatefulWidget {
   final String patientId;
   final String patientName;
-  const PediatricianMedicalHistoryPage({super.key, required this.patientId, required this.patientName});
+  final String? pediatricianId;
+  const PediatricianMedicalHistoryPage({super.key, required this.patientId, required this.patientName, this.pediatricianId});
 
   @override
   State<PediatricianMedicalHistoryPage> createState() => _PediatricianMedicalHistoryPageState();
 }
 
 class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHistoryPage> {
+  bool _canEdit = false;
   final _formKey = GlobalKey<FormState>();
   final _anamnesisController = TextEditingController();
   final _planController = TextEditingController();
@@ -24,7 +26,16 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
   @override
   void initState() {
     super.initState();
+    _checkEditPermission();
     _loadHistory();
+  }
+
+  Future<void> _checkEditPermission() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    if (widget.pediatricianId == null || widget.pediatricianId == user.uid) {
+      setState(() => _canEdit = true);
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -50,6 +61,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
     if (!_formKey.currentState!.validate()) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+    if (!_canEdit) return;
     await FirebaseFirestore.instance
         .collection('medical_histories')
         .doc('${user.uid}_${widget.patientId}')
@@ -122,6 +134,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese la anamnesis' : null,
+                              enabled: _canEdit,
                             ),
                           ],
                         ),
@@ -146,6 +159,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese el plan' : null,
+                              enabled: _canEdit,
                             ),
                           ],
                         ),
@@ -170,6 +184,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese el análisis' : null,
+                              enabled: _canEdit,
                             ),
                           ],
                         ),
@@ -194,6 +209,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese la nota de evolución' : null,
+                              enabled: _canEdit,
                             ),
                           ],
                         ),
@@ -218,25 +234,27 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese las conclusiones' : null,
+                              enabled: _canEdit,
                             ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.save),
-                        label: const Text('Guardar', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    if (_canEdit)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.save),
+                          label: const Text('Guardar', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: _saveHistory,
                         ),
-                        onPressed: _saveHistory,
                       ),
-                    ),
                   ],
                 ),
               ),
