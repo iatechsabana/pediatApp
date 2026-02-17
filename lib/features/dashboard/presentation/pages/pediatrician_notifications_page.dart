@@ -232,8 +232,12 @@ class _PediatricianNotificationsPageState
                         ),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
+                            onPressed: () => Navigator.pop(ctx, null),
                             child: const Text('Cerrar'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Rechazar', style: TextStyle(color: Colors.red)),
                           ),
                           ElevatedButton(
                             onPressed: () => Navigator.pop(ctx, true),
@@ -245,9 +249,46 @@ class _PediatricianNotificationsPageState
                       ),
                     );
 
-                    if (confirm != true) return;
-
-                    if (type == 'videollamada') {
+                    if (confirm == false) {
+                      // Rechazar: eliminar notificación
+                      await _deleteNotification(
+                        notificationId: id,
+                        snapshot: snapshot,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Notificación rechazada.')),
+                      );
+                      return;
+                    }
+                    if (confirm == true) {
+                      if (type == 'videollamada') {
+                        if (patientId.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se encontró el patientId en la notificación.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        final roomCode = '${user.uid}_$patientId';
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VideoCallPage(
+                              roomCode: roomCode,
+                              userName: user.displayName ?? 'Médico',
+                            ),
+                          ),
+                        );
+                        await _deleteNotification(
+                          notificationId: id,
+                          snapshot: snapshot,
+                        );
+                        return;
+                      }
+                      // Otros tipos: crear/actualizar historia clínica
                       if (patientId.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -258,60 +299,25 @@ class _PediatricianNotificationsPageState
                         );
                         return;
                       }
-
-                      // Room único y consistente (médico + paciente)
-                      final roomCode = '${user.uid}_$patientId';
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => VideoCallPage(
-                            roomCode: roomCode,
-                            userName: user.displayName ?? 'Médico',
-                          ),
-                        ),
-                      );
-
+                      final docRef = FirebaseFirestore.instance
+                          .collection('medical_histories')
+                          .doc('${user.uid}_$patientId');
+                      await docRef.set({
+                        'pediatricianId': user.uid,
+                        'patientId': patientId,
+                        'patientName': patientName.isNotEmpty
+                            ? patientName
+                            : 'Paciente',
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      }, SetOptions(merge: true));
                       await _deleteNotification(
                         notificationId: id,
                         snapshot: snapshot,
                       );
-                      return;
-                    }
-
-                    // Otros tipos: crear/actualizar historia clínica
-                    if (patientId.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'No se encontró el patientId en la notificación.',
-                          ),
-                        ),
+                        const SnackBar(content: Text('Historia actualizada.')),
                       );
-                      return;
                     }
-
-                    final docRef = FirebaseFirestore.instance
-                        .collection('medical_histories')
-                        .doc('${user.uid}_$patientId');
-
-                    await docRef.set({
-                      'pediatricianId': user.uid,
-                      'patientId': patientId,
-                      'patientName': patientName.isNotEmpty
-                          ? patientName
-                          : 'Paciente',
-                      'updatedAt': FieldValue.serverTimestamp(),
-                    }, SetOptions(merge: true));
-
-                    await _deleteNotification(
-                      notificationId: id,
-                      snapshot: snapshot,
-                    );
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Historia actualizada.')),
-                    );
                   },
                 ),
               );
