@@ -16,6 +16,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
   bool _canEdit = false;
   final _formKey = GlobalKey<FormState>();
   final _anamnesisController = TextEditingController();
+  final _examenFisicoController = TextEditingController();
   final _planController = TextEditingController();
   final _analisisController = TextEditingController();
   final _evolucionController = TextEditingController();
@@ -49,6 +50,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
     if (doc.exists) {
       _history = doc.data();
       _anamnesisController.text = _history?['anamnesis'] ?? '';
+      _examenFisicoController.text = _history?['examenFisico'] ?? '';
       _planController.text = _history?['plan'] ?? '';
       _analisisController.text = _history?['analisis'] ?? '';
       _evolucionController.text = _history?['evolucion'] ?? '';
@@ -70,6 +72,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
       'patientId': widget.patientId,
       'patientName': widget.patientName,
       'anamnesis': _anamnesisController.text.trim(),
+      'examenFisico': _examenFisicoController.text.trim(),
       'plan': _planController.text.trim(),
       'analisis': _analisisController.text.trim(),
       'evolucion': _evolucionController.text.trim(),
@@ -93,6 +96,7 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
   @override
   void dispose() {
     _anamnesisController.dispose();
+    _examenFisicoController.dispose();
     _planController.dispose();
     _analisisController.dispose();
     _evolucionController.dispose();
@@ -134,6 +138,31 @@ class _PediatricianMedicalHistoryPageState extends State<PediatricianMedicalHist
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese la anamnesis' : null,
+                              enabled: _canEdit,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Examen físico', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _examenFisicoController,
+                              maxLines: 3,
+                              decoration: const InputDecoration(
+                                hintText: 'Signos vitales, hallazgos físicos, etc.',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (v) => v == null || v.trim().isEmpty ? 'Ingrese el examen físico' : null,
                               enabled: _canEdit,
                             ),
                           ],
