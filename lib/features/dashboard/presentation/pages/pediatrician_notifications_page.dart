@@ -309,12 +309,23 @@ class _PediatricianNotificationsPageState
                             : 'Paciente',
                         'updatedAt': FieldValue.serverTimestamp(),
                       }, SetOptions(merge: true));
+                      // Notificar al usuario (padre/madre) que la historia clínica fue actualizada
+                      await FirebaseFirestore.instance.collection('notifications').add({
+                        'toUserId': patientId,
+                        'fromUserId': user.uid,
+                        'type': 'historia_clinica',
+                        'title': 'Historia clínica actualizada',
+                        'message': 'El médico ha actualizado la historia clínica de $patientName.',
+                        'timestamp': FieldValue.serverTimestamp(),
+                        'patientName': patientName,
+                        'pediatricianId': user.uid,
+                      });
                       await _deleteNotification(
                         notificationId: id,
                         snapshot: snapshot,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Historia actualizada.')),
+                        const SnackBar(content: Text('Historia actualizada y usuario notificado.')),
                       );
                     }
                   },

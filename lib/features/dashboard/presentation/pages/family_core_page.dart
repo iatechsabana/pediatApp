@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'medical_history_list_page.dart';
 
 class FamilyCorePage extends StatefulWidget {
   const FamilyCorePage({super.key});
@@ -23,6 +26,23 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
 
   final List<_ChildInfo> _children = [];
 
+  String get _currentUserId => FirebaseAuth.instance.currentUser?.uid ?? '';
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _medicalHistoriesStream(String childName) {
+    final uid = _currentUserId;
+    if (childName.trim().isEmpty || uid.isEmpty) {
+      // Stream vacío para evitar queries inútiles
+      return const Stream.empty();
+    }
+
+    return FirebaseFirestore.instance
+        .collection('medical_histories')
+        .where('patientName', isEqualTo: childName.trim())
+        .where('patientId', isEqualTo: uid)
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
+  }
+
   @override
   void dispose() {
     _fatherController.dispose();
@@ -40,9 +60,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     super.dispose();
   }
 
-  // ============================================================
-  //   GUARDAR
-  // ============================================================
   void _save() {
     if (_formKey.currentState?.validate() ?? false) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,11 +68,15 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     }
   }
 
-  // ============================================================
-  //   AGREGAR / ELIMINAR HIJO
-  // ============================================================
   void _addChild() {
-    setState(() => _children.add(_ChildInfo()));
+    final child = _ChildInfo();
+
+    // Para que el título y la sección de historias se refresquen al escribir el nombre
+    child.nameController.addListener(() {
+      if (mounted) setState(() {});
+    });
+
+    setState(() => _children.add(child));
   }
 
   void _removeChild(int index) {
@@ -65,11 +86,9 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     });
   }
 
-  // ============================================================
-  //   UI: TARJETA DE HIJO
-  // ============================================================
   Widget _buildChildCard(int index) {
     final child = _children[index];
+    final childName = child.nameController.text.trim();
 
     return Card(
       elevation: 3,
@@ -91,20 +110,16 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                child.nameController.text.isEmpty
-                    ? "Hijo ${index + 1}"
-                    : child.nameController.text,
+                childName.isEmpty ? "Hijo ${index + 1}" : childName,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ],
         ),
-
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.red),
           onPressed: () => _removeChild(index),
         ),
-
         children: [
           Padding(
             padding: const EdgeInsets.all(AppDimens.paddingMedium),
@@ -138,6 +153,97 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: AppDimens.paddingMedium),
+
+                // Historias clínicas (en vivo)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Historias clínicas previas:",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                if (_currentUserId.isEmpty)
+                  const Text(
+                    "Inicia sesión para ver historias clínicas.",
+                    style: TextStyle(color: Colors.grey),
+                  )
+                else if (childName.isEmpty)
+                  const Text(
+                    "Escribe el nombre del hijo para buscar historias clínicas.",
+                    style: TextStyle(color: Colors.grey),
+                  )
+                else
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _medicalHistoriesStream(childName),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Text(
+                          "Error: ${snapshot.error}",
+                          style: const TextStyle(color: Colors.red),
+                        );
+                      }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      final docs = snapshot.data?.docs ?? [];
+                      if (docs.isEmpty) {
+                        return const Text(
+                          "Sin historias clínicas registradas.",
+                          style: TextStyle(color: Colors.grey),
+                        );
+                      }
+
+                      return Column(
+                        children: docs.map((d) {
+                          final data = d.data();
+                          final updatedAt = data['updatedAt'];
+                          final date = (updatedAt is Timestamp)
+                              ? updatedAt.toDate()
+                              : (updatedAt is DateTime ? updatedAt : null);
+
+                          final dateText = date != null
+                              ? "${date.toLocal()}".split(' ')[0]
+                              : "";
+
+                          return ListTile(
+                            title: Text(data['patientName'] ?? 'Paciente'),
+                            subtitle: Text(
+                              "Médico: ${data['pediatricianId'] ?? ''}\nFecha: $dateText",
+                            ),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(data['patientName'] ?? 'Paciente'),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Médico: ${data['pediatricianId'] ?? ''}"),
+                                      Text("Fecha: $dateText"),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text("Cerrar"),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -146,9 +252,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     );
   }
 
-  // ============================================================
-  //   SELECTOR DE FECHA PARA HIJOS
-  // ============================================================
   Future<void> _pickChildDob(int index) async {
     final picked = await showDatePicker(
       context: context,
@@ -159,7 +262,7 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primary,
               onPrimary: Colors.white,
               onSurface: Colors.black,
@@ -178,17 +281,27 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     }
   }
 
-  // ============================================================
-  //   PÁGINA PRINCIPAL
-  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Núcleo familiar"),
         backgroundColor: AppColors.primary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.medical_services),
+            tooltip: "Historias clínicas",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const MedicalHistoryListPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppDimens.paddingLarge),
         child: Form(
@@ -196,8 +309,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // TÍTULO + BOTÓN AGREGAR HIJO
               Row(
                 children: [
                   const Icon(Icons.family_restroom, color: AppColors.primary),
@@ -217,10 +328,7 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
                   ),
                 ],
@@ -231,9 +339,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
 
               const SizedBox(height: AppDimens.paddingLarge),
 
-              // =====================================================
-              //   INFORMACIÓN FAMILIAR GENERAL
-              // =====================================================
               _buildSectionTitle("Información familiar"),
 
               TextFormField(
@@ -295,9 +400,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
               const Divider(),
               const SizedBox(height: AppDimens.paddingLarge),
 
-              // =====================================================
-              //   EMERGENCIA
-              // =====================================================
               _buildSectionTitle("Contacto de emergencia"),
 
               TextFormField(
@@ -306,7 +408,7 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
                   labelText: "Nombre",
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? "Ingrese un nombre" : null,
+                validator: (v) => (v == null || v.isEmpty) ? "Ingrese un nombre" : null,
               ),
               const SizedBox(height: AppDimens.paddingMedium),
 
@@ -317,7 +419,7 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
                   labelText: "Teléfono",
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => v!.isEmpty ? "Ingrese un teléfono" : null,
+                validator: (v) => (v == null || v.isEmpty) ? "Ingrese un teléfono" : null,
               ),
 
               const SizedBox(height: AppDimens.paddingLarge),
@@ -354,9 +456,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
     );
   }
 
-  // ============================================================
-  //   TITULOS DE SECCIÓN UNIFORMES
-  // ============================================================
   Widget _buildSectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppDimens.paddingSmall),
@@ -372,9 +471,6 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
   }
 }
 
-// ============================================================
-//   MODELO HIJO
-// ============================================================
 class _ChildInfo {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController ageController = TextEditingController();

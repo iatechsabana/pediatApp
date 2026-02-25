@@ -151,6 +151,14 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             ListTile(
               leading: const Icon(Icons.medical_services),
+              title: const Text('Historias clínicas'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MedicalHistoryPage()),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.medical_services),
               title: const Text('Solicitar servicio'),
               onTap: () => Navigator.push(
                 context,
