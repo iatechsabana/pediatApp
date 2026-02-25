@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'video_call_waiting_page.dart';
 import 'public_profile_page.dart';
 import '../../../chat/presentation/chat_pages.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -211,11 +212,17 @@ class SpecialistListPage extends StatelessWidget {
                                           );
                                           return;
                                         }
+                                        // Generar un roomId único
+                                        final roomId = 'room_${user.uid}_${toUserId}_${DateTime.now().millisecondsSinceEpoch}';
+                                        // Crear registro de videollamada en Firestore
+                                        final videocallDoc = await FirebaseFirestore.instance.collection('videocalls').add({
+                                          'roomId': roomId,
+                                          'fromUserId': user.uid,
+                                          'toUserId': toUserId,
+                                          'status': 'pendiente', // pendiente, aceptada, rechazada
+                                          'timestamp': FieldValue.serverTimestamp(),
+                                        });
                                         // Crear notificación en Firestore para el médico
-                                        debugPrint('Enviando notificación: toUserId=$toUserId, fromUserId=${user.uid}');
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Enviando notificación a: $toUserId')),
-                                        );
                                         await FirebaseFirestore.instance.collection('notifications').add({
                                           'toUserId': toUserId,
                                           'fromUserId': user.uid,
@@ -223,9 +230,22 @@ class SpecialistListPage extends StatelessWidget {
                                           'timestamp': FieldValue.serverTimestamp(),
                                           'message': 'Tienes una nueva solicitud de videollamada de un paciente. Por favor revisa la app para responder.',
                                           'userName': user.displayName ?? '',
+                                          'videocallId': videocallDoc.id,
+                                          'roomId': roomId,
                                         });
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(content: Text('Se notificó al médico para la videollamada.')),
+                                        );
+                                        // Navegar a la sala de videollamada y escuchar el estado
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => VideoCallWaitingPage(
+                                              roomId: roomId,
+                                              videocallId: videocallDoc.id,
+                                              toUserId: toUserId,
+                                            ),
+                                          ),
                                         );
                                       },
                                     ),
