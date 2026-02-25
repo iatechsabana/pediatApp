@@ -152,9 +152,14 @@ class _MedicalHistoryPageState extends State<MedicalHistoryPage> {
     final uid = _user?.uid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Antecedentes médicos'),
-        backgroundColor: AppColors.primary,
+          appBar: AppBar(
+            toolbarHeight: 44,
+            title: const Text(
+              'Antecedentes médicos',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: AppColors.primary,
+            centerTitle: true,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

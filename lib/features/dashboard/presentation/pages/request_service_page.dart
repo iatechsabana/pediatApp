@@ -8,11 +8,16 @@ class RequestServicePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Solicitar Servicio'),
-        backgroundColor: Colors.teal,
+          toolbarHeight: 44,
+          title: const Text(
+            'Solicitar servicio',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.teal,
+          centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -56,8 +56,13 @@ class _MedicalHistoryListPageState extends State<MedicalHistoryListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historias clínicas'),
+        toolbarHeight: 44,
+        title: const Text(
+          'Historias clínicas',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: Colors.teal,
+        centerTitle: true,
       ),
       body: Column(
         children: [

@@ -285,8 +285,13 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Núcleo familiar"),
+        toolbarHeight: 44,
+        title: const Text(
+          "Núcleo familiar",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: AppColors.primary,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.medical_services),
