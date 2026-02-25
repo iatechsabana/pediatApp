@@ -1,1 +1,29 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"pediapp-fe927","appId":"1:518164761248:android:caa0d87d25f782a10917c5","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"pediapp-fe927","configurations":{"android":"1:518164761248:android:caa0d87d25f782a10917c5","ios":"1:518164761248:ios:3345eb25f24908000917c5","macos":"1:518164761248:ios:3345eb25f24908000917c5","web":"1:518164761248:web:c69a4744e92518990917c5","windows":"1:518164761248:web:561b5eb7f21d38910917c5"}}}}}}
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "pediapp-fe927",
+                    "appId": "1:518164761248:android:caa0d87d25f782a10917c5",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "pediapp-fe927",
+                    "configurations": {
+                        "android": "1:518164761248:android:caa0d87d25f782a10917c5",
+                        "ios": "1:518164761248:ios:3345eb25f24908000917c5",
+                        "macos": "1:518164761248:ios:3345eb25f24908000917c5",
+                        "web": "1:518164761248:web:c69a4744e92518990917c5",
+                        "windows": "1:518164761248:web:561b5eb7f21d38910917c5"
+                    }
+                }
+            }
+        }
+    },
+    "functions": {
+        "source": "functions",
+        "runtime": "nodejs20"
+    }
+}
