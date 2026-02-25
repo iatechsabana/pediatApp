@@ -185,24 +185,6 @@ class SpecialistListPage extends StatelessWidget {
                                         padding: const EdgeInsets.symmetric(horizontal: 12),
                                       ),
                                       onPressed: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text('Confirmar solicitud'),
-                                            content: const Text('¿Deseas solicitar una videollamada con este médico?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context, false),
-                                                child: const Text('Cancelar'),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () => Navigator.pop(context, true),
-                                                child: const Text('Solicitar'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (confirm != true) return;
                                         final user = FirebaseAuth.instance.currentUser;
                                         if (user == null) return;
                                         final toUserId = docs[i].id;
@@ -212,6 +194,61 @@ class SpecialistListPage extends StatelessWidget {
                                           );
                                           return;
                                         }
+                                        // Obtener hijos del usuario
+                                        final parentDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+                                        final children = (parentDoc.data()?['children'] ?? []) as List<dynamic>;
+                                        if (children.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('No tienes hijos registrados.')),
+                                          );
+                                          return;
+                                        }
+                                        // Selección de hijo
+                                        int selectedIndex = 0;
+                                        final confirm = await showDialog<Map<String, dynamic>>(
+                                          context: context,
+                                          builder: (context) {
+                                            return StatefulBuilder(
+                                              builder: (context, setState) {
+                                                return AlertDialog(
+                                                  title: const Text('Selecciona el hijo para la videollamada'),
+                                                  content: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      DropdownButton<int>(
+                                                        value: selectedIndex,
+                                                        items: List.generate(children.length, (idx) {
+                                                          final child = children[idx];
+                                                          return DropdownMenuItem<int>(
+                                                            value: idx,
+                                                            child: Text(child['name'] ?? 'Hijo ${idx + 1}'),
+                                                          );
+                                                        }),
+                                                        onChanged: (val) {
+                                                          setState(() => selectedIndex = val ?? 0);
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, null),
+                                                      child: const Text('Cancelar'),
+                                                    ),
+                                                    ElevatedButton(
+                                                      onPressed: () => Navigator.pop(context, {
+                                                        'child': children[selectedIndex],
+                                                      }),
+                                                      child: const Text('Solicitar'),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          },
+                                        );
+                                        if (confirm == null || confirm['child'] == null) return;
+                                        final selectedChild = confirm['child'];
                                         // Generar un roomId único
                                         final roomId = 'room_${user.uid}_${toUserId}_${DateTime.now().millisecondsSinceEpoch}';
                                         // Crear registro de videollamada en Firestore
@@ -221,6 +258,7 @@ class SpecialistListPage extends StatelessWidget {
                                           'toUserId': toUserId,
                                           'status': 'pendiente', // pendiente, aceptada, rechazada
                                           'timestamp': FieldValue.serverTimestamp(),
+                                          'child': selectedChild,
                                         });
                                         // Crear notificación en Firestore para el médico
                                         await FirebaseFirestore.instance.collection('notifications').add({
@@ -233,6 +271,7 @@ class SpecialistListPage extends StatelessWidget {
                                           'userName': user.displayName ?? '',
                                           'videocallId': videocallDoc.id,
                                           'roomId': roomId,
+                                          'child': selectedChild,
                                         });
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(content: Text('Se notificó al médico para la videollamada.')),
