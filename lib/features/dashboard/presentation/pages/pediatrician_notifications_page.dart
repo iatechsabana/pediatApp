@@ -238,34 +238,45 @@ class _PediatricianNotificationsPageState
                     );
 
                     if (confirm == false) {
-                      // Rechazar: eliminar notificación
+                      // Rechazar: actualizar estado en Firestore y eliminar notificación
+                      final videocallId = data['videocallId'] ?? '';
+                      if (videocallId.isNotEmpty) {
+                        await FirebaseFirestore.instance.collection('videocalls').doc(videocallId).update({
+                          'status': 'rechazada',
+                          'rejectReason': 'El médico rechazó la videollamada.',
+                        });
+                      }
                       await _deleteNotification(
                         notificationId: id,
                         snapshot: snapshot,
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Notificación rechazada.')),
+                        const SnackBar(content: Text('Videollamada rechazada.')),
                       );
                       return;
                     }
                     if (confirm == true) {
                       if (type == 'videollamada') {
-                        if (patientId.isEmpty) {
+                        final roomId = data['roomId'] ?? '';
+                        final videocallId = data['videocallId'] ?? '';
+                        if (roomId.isEmpty || videocallId.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text(
-                                'No se encontró el patientId en la notificación.',
-                              ),
+                              content: Text('No se encontró el roomId o videocallId en la notificación.'),
                             ),
                           );
                           return;
                         }
-                        final roomCode = '${user.uid}_$patientId';
+                        // Actualizar estado a aceptada
+                        await FirebaseFirestore.instance.collection('videocalls').doc(videocallId).update({
+                          'status': 'aceptada',
+                        });
+                        // Navegar a la sala de videollamada (aquí va tu integración Jitsi)
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => VideoCallPage(
-                              roomCode: roomCode,
+                              roomCode: roomId,
                               userName: user.displayName ?? 'Médico',
                             ),
                           ),
