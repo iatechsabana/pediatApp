@@ -44,6 +44,40 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadFamilyCore();
+  }
+
+  Future<void> _loadFamilyCore() async {
+    final uid = _currentUserId;
+    if (uid.isEmpty) return;
+    final doc = await FirebaseFirestore.instance.collection('family_cores').doc(uid).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      _fatherController.text = data['father'] ?? '';
+      _motherController.text = data['mother'] ?? '';
+      _caregiverController.text = data['caregiver'] ?? '';
+      _siblingsController.text = data['siblings']?.toString() ?? '';
+      _addressController.text = data['address'] ?? '';
+      _phoneController.text = data['phone'] ?? '';
+      _emergencyNameController.text = data['emergencyName'] ?? '';
+      _emergencyPhoneController.text = data['emergencyPhone'] ?? '';
+      final children = (data['children'] as List?) ?? [];
+      _children.clear();
+      for (final c in children) {
+        final child = _ChildInfo();
+        child.nameController.text = c['name'] ?? '';
+        child.ageController.text = c['dob'] ?? '';
+        child.notesController.text = c['notes'] ?? '';
+        child.nameController.addListener(() { if (mounted) setState(() {}); });
+        _children.add(child);
+      }
+      setState(() {});
+    }
+  }
+
+  @override
   void dispose() {
     _fatherController.dispose();
     _motherController.dispose();
@@ -62,6 +96,26 @@ class _FamilyCorePageState extends State<FamilyCorePage> {
 
   void _save() {
     if (_formKey.currentState?.validate() ?? false) {
+      final uid = _currentUserId;
+      if (uid.isEmpty) return;
+      final childrenData = _children.map((c) => {
+        'name': c.nameController.text,
+        'dob': c.ageController.text,
+        'notes': c.notesController.text,
+      }).toList();
+      final data = {
+        'father': _fatherController.text,
+        'mother': _motherController.text,
+        'caregiver': _caregiverController.text,
+        'siblings': int.tryParse(_siblingsController.text) ?? 0,
+        'address': _addressController.text,
+        'phone': _phoneController.text,
+        'emergencyName': _emergencyNameController.text,
+        'emergencyPhone': _emergencyPhoneController.text,
+        'children': childrenData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      FirebaseFirestore.instance.collection('family_cores').doc(uid).set(data);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Núcleo familiar guardado correctamente")),
       );
