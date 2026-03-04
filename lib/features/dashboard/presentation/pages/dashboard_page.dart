@@ -31,6 +31,29 @@ class _DashboardPageState extends State<DashboardPage> {
   // Las notas ahora se obtendrán en tiempo real desde Firestore
 
   @override
+  void initState() {
+    super.initState();
+    _fetchHijosRegistrados();
+  }
+
+  Future<void> _fetchHijosRegistrados() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final doc = await FirebaseFirestore.instance.collection('family_cores').doc(uid).get();
+    if (doc.exists) {
+      final data = doc.data();
+      final children = (data?['children'] as List?) ?? [];
+      setState(() {
+        hijosRegistrados = children.length;
+      });
+    } else {
+      setState(() {
+        hijosRegistrados = 0;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       // ============================================================
@@ -454,6 +477,4 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     );
   }
-
-// ...existing code...
 }
