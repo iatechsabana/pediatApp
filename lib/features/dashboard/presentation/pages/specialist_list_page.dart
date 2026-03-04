@@ -28,8 +28,10 @@ class SpecialistListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Especialistas: ${_serviceLabel(service)}'),
+        toolbarHeight: 44,
+        title: Text('Especialistas: ${_serviceLabel(service)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         backgroundColor: Colors.teal,
+        centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
@@ -194,9 +196,9 @@ class SpecialistListPage extends StatelessWidget {
                                           );
                                           return;
                                         }
-                                        // Obtener hijos del usuario
-                                        final parentDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-                                        final children = (parentDoc.data()?['children'] ?? []) as List<dynamic>;
+                                        // Obtener hijos del usuario desde family_cores
+                                        final familyDoc = await FirebaseFirestore.instance.collection('family_cores').doc(user.uid).get();
+                                        final children = (familyDoc.data()?['children'] ?? []) as List<dynamic>;
                                         if (children.isEmpty) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             const SnackBar(content: Text('No tienes hijos registrados.')),
