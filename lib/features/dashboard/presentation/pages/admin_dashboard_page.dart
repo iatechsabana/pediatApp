@@ -22,7 +22,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _searchController.addListener(() => setState(() {}));
   }
 
@@ -77,9 +77,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
             toolbarHeight: 48,
             title: const Text('Panel Administrador', style: TextStyle(fontWeight: FontWeight.bold)),
             centerTitle: true,
-            actions: [
-              IconButton(icon: const Icon(Icons.logout), tooltip: 'Cerrar sesión', onPressed: _logout),
-            ],
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(96),
               child: Column(
@@ -110,6 +107,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
                     tabs: const [
                       Tab(text: 'Pendientes'),
                       Tab(text: 'Habilitados'),
+                      Tab(text: 'Cuenta'),
                     ],
                   ),
                 ],
@@ -123,6 +121,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
           children: [
             _buildPendingList(),
             _buildEnabledList(),
+            _buildAccountTab(),
           ],
         ),
       ),
@@ -368,6 +367,47 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> with SingleTick
         Navigator.pop(context);
         Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentViewerPage(url: url, title: label)));
       },
+    );
+  }
+
+  // ============================================================
+  //   TAB CUENTA
+  // ============================================================
+  Widget _buildAccountTab() {
+    final user = FirebaseAuth.instance.currentUser;
+    return ListView(
+      padding: const EdgeInsets.all(AppDimens.paddingLarge),
+      children: [
+        const SizedBox(height: AppDimens.paddingLarge),
+        Center(
+          child: CircleAvatar(
+            radius: 36,
+            backgroundColor: AppColors.primary,
+            child: Text(
+              (user?.email ?? 'A').isNotEmpty ? (user?.email ?? 'A')[0].toUpperCase() : 'A',
+              style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: Text(
+            user?.email ?? '',
+            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ),
+        const SizedBox(height: AppDimens.paddingHuge),
+        OutlinedButton.icon(
+          onPressed: _logout,
+          icon: const Icon(Icons.logout, color: AppColors.error),
+          label: const Text('Cerrar sesión', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.error),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge)),
+          ),
+        ),
+      ],
     );
   }
 }

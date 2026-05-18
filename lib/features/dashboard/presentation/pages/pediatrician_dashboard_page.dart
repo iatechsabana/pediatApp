@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
-import '../../../auth/presentation/pages/login_page.dart';
 import '../../../chat/presentation/user_select_page.dart';
 import '../../../chat/presentation/chat_pages.dart';
 import 'pediatrician_threads_page.dart';
@@ -24,33 +22,6 @@ class PediatricianDashboardPage extends StatefulWidget {
 
 class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
   int _selectedIndex = 0;
-
-  Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge)),
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Deseas cerrar sesión?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Cerrar sesión', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true || !mounted) return;
-    await FirebaseAuth.instance.signOut();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
-  }
 
   Future<void> _openChat() async {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -110,7 +81,7 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _PediatricianHomeTab(onChatTap: _openChat, onLogout: _logout),
+      _PediatricianHomeTab(onChatTap: _openChat),
       PediatricianThreadsPage(onTapOwnProfile: () => setState(() => _selectedIndex = 3)),
       const PediatricianNotificationsPage(),
       const PediatricianHistoryListPage(),
@@ -156,9 +127,8 @@ class _PediatricianDashboardPageState extends State<PediatricianDashboardPage> {
 // ============================================================
 class _PediatricianHomeTab extends StatelessWidget {
   final VoidCallback onChatTap;
-  final VoidCallback onLogout;
 
-  const _PediatricianHomeTab({required this.onChatTap, required this.onLogout});
+  const _PediatricianHomeTab({required this.onChatTap});
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +144,6 @@ class _PediatricianHomeTab extends StatelessWidget {
           centerTitle: true,
           actions: [
             IconButton(icon: const Icon(Icons.chat_outlined), tooltip: 'Chat', onPressed: onChatTap),
-            IconButton(icon: const Icon(Icons.logout), tooltip: 'Cerrar sesión', onPressed: onLogout),
           ],
         ),
         SliverToBoxAdapter(child: _buildHeader(uid)),

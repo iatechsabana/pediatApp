@@ -71,10 +71,11 @@ class _DashboardPageState extends State<DashboardPage> {
       body: IndexedStack(
         index: _tab,
         children: [
-          _HomeTab(userName: _userName, onLogout: _logout),
+          _HomeTab(userName: _userName),
           const MedicalHistoryListPage(),
           const FamilyCorePage(),
           const AssistantPage(),
+          _UserProfileTab(onLogout: _logout),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -101,6 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
           BottomNavigationBarItem(icon: Icon(Icons.history_edu_outlined), activeIcon: Icon(Icons.history_edu), label: 'Historial'),
           BottomNavigationBarItem(icon: Icon(Icons.family_restroom_outlined), activeIcon: Icon(Icons.family_restroom), label: 'Familia'),
           BottomNavigationBarItem(icon: Icon(Icons.smart_toy_outlined), activeIcon: Icon(Icons.smart_toy), label: 'Asistente'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
@@ -112,9 +114,8 @@ class _DashboardPageState extends State<DashboardPage> {
 // ============================================================
 class _HomeTab extends StatelessWidget {
   final String userName;
-  final VoidCallback onLogout;
 
-  const _HomeTab({required this.userName, required this.onLogout});
+  const _HomeTab({required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -150,13 +151,6 @@ class _HomeTab extends StatelessWidget {
       toolbarHeight: 48,
       title: const Text('DoctorKids', style: TextStyle(fontWeight: FontWeight.bold)),
       centerTitle: true,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout),
-          tooltip: 'Cerrar sesión',
-          onPressed: onLogout,
-        ),
-      ],
     );
   }
 
@@ -409,4 +403,137 @@ class _QuickAction {
   final Color color;
   final VoidCallback onTap;
   const _QuickAction({required this.icon, required this.label, required this.color, required this.onTap});
+}
+
+// ============================================================
+//   TAB PERFIL
+// ============================================================
+class _UserProfileTab extends StatelessWidget {
+  final VoidCallback onLogout;
+  const _UserProfileTab({required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBackground,
+      body: CustomScrollView(
+        slivers: [
+          const SliverAppBar(
+            backgroundColor: AppColors.primary,
+            pinned: true,
+            toolbarHeight: 48,
+            title: Text('Mi perfil', style: TextStyle(fontWeight: FontWeight.bold)),
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+          ),
+          SliverToBoxAdapter(
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: uid == null
+                  ? const Stream.empty()
+                  : FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+              builder: (context, snap) {
+                final data = snap.data?.data() as Map<String, dynamic>?;
+                final name = (data?['name'] as String?) ?? 'Usuario';
+                final email = (data?['email'] as String?) ?? '';
+                final phone = (data?['phone'] as String?) ?? '';
+                final photo = (data?['photoUrl'] as String?) ?? '';
+                final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
+                return Column(
+                  children: [
+                    // Header
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.primaryLight, AppColors.primary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          photo.isNotEmpty
+                              ? CircleAvatar(radius: 40, backgroundImage: NetworkImage(photo), backgroundColor: Colors.white)
+                              : CircleAvatar(
+                                  radius: 40,
+                                  backgroundColor: Colors.white,
+                                  child: Text(initial, style: const TextStyle(color: AppColors.primary, fontSize: 28, fontWeight: FontWeight.bold)),
+                                ),
+                          const SizedBox(height: 12),
+                          Text(name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                          if (email.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(email, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    // Info
+                    Padding(
+                      padding: const EdgeInsets.all(AppDimens.paddingLarge),
+                      child: Column(
+                        children: [
+                          if (phone.isNotEmpty)
+                            _infoTile(icon: Icons.phone_outlined, label: 'Teléfono', value: phone),
+                          if (email.isNotEmpty)
+                            _infoTile(icon: Icons.email_outlined, label: 'Correo', value: email),
+                          const SizedBox(height: AppDimens.paddingLarge),
+
+                          // Botón cerrar sesión
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: onLogout,
+                              icon: const Icon(Icons.logout, color: AppColors.error),
+                              label: const Text('Cerrar sesión', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.error),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppDimens.paddingHuge),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTile({required IconData icon, required String label, required String value}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppDimens.paddingSmall),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppDimens.borderRadiusLarge),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
