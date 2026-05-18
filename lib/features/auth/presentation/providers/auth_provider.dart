@@ -1,23 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../data/repositories/auth_repository_impl.dart';
+import '../../domain/models/user_model.dart';
 import '../../domain/repositories/auth_repository.dart';
 
-// Provider del repositorio
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl();
 });
 
-// Provider del estado de autenticación
 final authStateProvider = StreamProvider<User?>((ref) {
-  final repository = ref.watch(authRepositoryProvider);
-  return repository.authStateChanges;
+  return ref.watch(authRepositoryProvider).authStateChanges;
 });
 
-// Provider para las acciones de autenticación
 final authControllerProvider = Provider((ref) {
-  final repository = ref.watch(authRepositoryProvider);
-  return AuthController(repository);
+  return AuthController(ref.watch(authRepositoryProvider));
 });
 
 class AuthController {
@@ -25,17 +22,20 @@ class AuthController {
 
   AuthController(this._repository);
 
-  Future<void> signIn({
+  /// Retorna el [UserModel] del usuario autenticado.
+  /// Lanza [Exception] con mensaje en español si las credenciales o el estado son inválidos.
+  Future<UserModel> signIn({
     required String email,
     required String password,
-  }) async {
-    await _repository.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+  }) {
+    return _repository.signInAndGetUser(email: email, password: password);
   }
 
-  Future<void> signOut() async {
-    await _repository.signOut();
+  Future<void> register(RegisterData data) {
+    return _repository.registerUser(data);
+  }
+
+  Future<void> signOut() {
+    return _repository.signOut();
   }
 }

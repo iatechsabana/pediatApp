@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-// ...existing code...
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,6 +8,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimens.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/document_picker_stub.dart';
+import '../providers/auth_provider.dart';
+import '../../domain/models/user_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'login_page.dart';
 
@@ -34,106 +34,61 @@ class _DocumentoItem {
 }
 
 // =======================================================
-// MÉTODOS GLOBALES PARA SUBIDA DE DOCUMENTOS
+// FUNCIÓN UNIFICADA PARA SUBIDA DE DOCUMENTOS
 // =======================================================
 
-Future<void> _pickAndUploadPoliza(
+Future<void> _pickAndUploadDocument(
   BuildContext context,
-  Function(String) setPolizaUrl,
+  String storagePath,
+  Function(String) onUrl,
 ) async {
   final picked = await pickDocument();
   if (picked == null) return;
 
-  final fileName = picked.name;
   final fileBytes = picked.bytes;
-  final maxSize = 5 * 1024 * 1024;
+  const maxSize = 5 * 1024 * 1024;
 
   if (fileBytes.length > maxSize) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('El archivo supera el límite de 5MB o es inválido'),
-      ),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El archivo supera el límite de 5MB o es inválido')),
+      );
+    }
     return;
   }
 
   final storageRef = FirebaseStorage.instance.ref().child(
-    'polizas/${DateTime.now().millisecondsSinceEpoch}_$fileName',
+    '$storagePath/${DateTime.now().millisecondsSinceEpoch}_${picked.name}',
   );
 
   await storageRef.putData(fileBytes);
   final url = await storageRef.getDownloadURL();
-  setPolizaUrl(url);
-}
-
-Future<void> _pickAndUploadTarjetaProfesional(
-  BuildContext context,
-  Function(String) setTarjetaProfesionalUrl,
-) async {
-  final picked = await pickDocument();
-  if (picked == null) return;
-
-  final fileName = picked.name;
-  final fileBytes = picked.bytes;
-  final maxSize = 5 * 1024 * 1024;
-
-  if (fileBytes.length > maxSize) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('El archivo supera el límite de 5MB o es inválido'),
-      ),
-    );
-    return;
-  }
-
-  final storageRef = FirebaseStorage.instance.ref().child(
-    'tarjetas_profesional/${DateTime.now().millisecondsSinceEpoch}_$fileName',
-  );
-
-  await storageRef.putData(fileBytes);
-  final url = await storageRef.getDownloadURL();
-  setTarjetaProfesionalUrl(url);
+  onUrl(url);
 }
 
 // =======================================================
 // PANTALLA DE REGISTRO
 // =======================================================
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
 enum AccountType { user, pediatrician }
 
-class _RegisterPageState extends State<RegisterPage> {
-          Future<bool> _requestFileAndCameraPermissions() async {
-            if (!mounted) return false;
-            final cameraStatus = await Permission.camera.request();
-            final storageStatus = await Permission.storage.request();
-            final photosStatus = await Permission.photos.request();
-            return cameraStatus.isGranted && (storageStatus.isGranted || photosStatus.isGranted);
-          }
-        String? _documentoIdentidadFrenteUrl;
-        String? _documentoIdentidadReversoUrl;
-      DateTime? _birthDate;
-    DateTime? _startDate;
-  Future<void> launchUrlCustom(Uri url) async {
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir el enlace.')),
-      );
-    }
-  }
-
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _dataTreatmentAccepted = false;
   int _step = 0;
   bool _obscure = true;
   bool _isLoading = false;
+
+  String? _documentoIdentidadFrenteUrl;
+  String? _documentoIdentidadReversoUrl;
+  DateTime? _birthDate;
+  DateTime? _startDate;
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -141,55 +96,63 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  // Eliminado: _experienceController
 
   AccountType _accountType = AccountType.user;
+  final _workAddressController = TextEditingController();
 
-  List<String> _documents = [];
   String? _polizaUrl;
   String? _tarjetaProfesionalUrl;
-  String? _documentoIdentidadUrl;
-  // Eliminados: _selectedFileName, _selectedFileBytes
-
   String? _selectedCountry = 'Colombia';
 
   final List<String> _countries = [
-    'Colombia',
-    'Argentina',
-    'México',
-    'Chile',
-    'Perú',
-    'Ecuador',
-    'Venezuela',
-    'Uruguay',
-    'Paraguay',
-    'Bolivia',
-    'Brasil',
-    'Estados Unidos',
-    'España',
-    'Alemania',
-    'Francia',
-    'Italia',
-    'Reino Unido',
-    'Canadá',
-    'Australia',
-    'Otro',
+    'Colombia', 'Argentina', 'México', 'Chile', 'Perú',
+    'Ecuador', 'Venezuela', 'Uruguay', 'Paraguay', 'Bolivia',
+    'Brasil', 'Estados Unidos', 'España', 'Alemania', 'Francia',
+    'Italia', 'Reino Unido', 'Canadá', 'Australia', 'Otro',
   ];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _workAddressController.dispose();
+    super.dispose();
+  }
+
+  Future<bool> _requestFileAndCameraPermissions() async {
+    if (!mounted) return false;
+    final cameraStatus = await Permission.camera.request();
+    final storageStatus = await Permission.storage.request();
+    final photosStatus = await Permission.photos.request();
+    return cameraStatus.isGranted && (storageStatus.isGranted || photosStatus.isGranted);
+  }
+
+  Future<void> _launchUrlCustom(Uri url) async {
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace.')),
+        );
+      }
+    }
+  }
 
   // =======================================================
   // NAVEGACIÓN STEPS
   // =======================================================
 
   void _nextStep() {
-    if (_step < 2) {
-      setState(() => _step++);
-    }
+    if (!_formKey.currentState!.validate()) return;
+    if (_step < 2) setState(() => _step++);
   }
 
   void _prevStep() {
-    if (_step > 0) {
-      setState(() => _step--);
-    }
+    if (_step > 0) setState(() => _step--);
   }
 
   // =======================================================
@@ -221,22 +184,27 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _fieldName() => TextFormField(
     controller: _nameController,
     style: AppTextStyles.formFieldText,
-    decoration: _input("Nombre completo", Icons.person),
-    validator: (v) => v!.isEmpty ? "Ingresa tu nombre" : null,
+    decoration: _input('Nombre completo', Icons.person),
+    validator: (v) => v!.isEmpty ? 'Ingresa tu nombre' : null,
   );
 
   Widget _fieldEmail() => TextFormField(
     controller: _emailController,
+    keyboardType: TextInputType.emailAddress,
     style: AppTextStyles.formFieldText,
-    decoration: _input("Correo electrónico", Icons.email),
-    validator: (v) => v!.contains("@") ? null : "Correo inválido",
+    decoration: _input('Correo electrónico', Icons.email),
+    validator: (v) {
+      if (v == null || v.isEmpty) return 'Ingresa tu correo';
+      final emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.\w{2,}$');
+      return emailRegex.hasMatch(v) ? null : 'Correo inválido';
+    },
   );
 
   Widget _fieldPassword() => TextFormField(
     controller: _passwordController,
     obscureText: _obscure,
     style: AppTextStyles.formFieldText,
-    decoration: _input("Contraseña", Icons.lock).copyWith(
+    decoration: _input('Contraseña', Icons.lock).copyWith(
       suffixIcon: IconButton(
         icon: Icon(
           _obscure ? Icons.visibility : Icons.visibility_off,
@@ -245,119 +213,85 @@ class _RegisterPageState extends State<RegisterPage> {
         onPressed: () => setState(() => _obscure = !_obscure),
       ),
     ),
-    validator: (v) => v!.length < 6 ? "Mínimo 6 caracteres" : null,
+    validator: (v) => v!.length < 6 ? 'Mínimo 6 caracteres' : null,
   );
 
   Widget _fieldPhone() => TextFormField(
     controller: _phoneController,
+    keyboardType: TextInputType.phone,
     style: AppTextStyles.formFieldText,
-    decoration: _input("Teléfono", Icons.phone),
-    validator: (v) => v!.isEmpty ? "Ingresa tu teléfono" : null,
+    decoration: _input('Teléfono', Icons.phone),
+    validator: (v) => v!.isEmpty ? 'Ingresa tu teléfono' : null,
+  );
+
+  Widget _fieldBirthDate() => GestureDetector(
+    onTap: () async {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: DateTime(2000),
+        firstDate: DateTime(1900),
+        lastDate: DateTime.now(),
+      );
+      if (picked != null) setState(() => _birthDate = picked);
+    },
+    child: AbsorbPointer(
+      child: TextFormField(
+        decoration: _input('Fecha de nacimiento', Icons.cake),
+        controller: TextEditingController(
+          text: _birthDate == null
+            ? ''
+            : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
+        ),
+        validator: (v) => _birthDate == null ? 'Selecciona tu fecha de nacimiento' : null,
+        style: AppTextStyles.formFieldText,
+      ),
+    ),
   );
 
   // =======================================================
-  // FORMULARIO USUARIO (SENCILLO)
+  // DATOS PERSONALES — compartido por usuario y pediatra step 1
   // =======================================================
 
-  Widget _stepUser() => Column(
+  Widget _stepPersonalData({bool showSubmit = false}) => Column(
     children: [
       _fieldName(),
+      const SizedBox(height: AppDimens.paddingMedium),
       _fieldEmail(),
+      const SizedBox(height: AppDimens.paddingMedium),
       _fieldPassword(),
+      const SizedBox(height: AppDimens.paddingMedium),
       _fieldPhone(),
+      const SizedBox(height: AppDimens.paddingMedium),
       TextFormField(
         controller: _addressController,
         style: AppTextStyles.formFieldText,
-        decoration: _input("Dirección", Icons.map_outlined),
-        validator: (v) => v!.isEmpty ? "Ingresa tu dirección" : null,
+        decoration: _input('Dirección', Icons.map_outlined),
+        validator: (v) => v!.isEmpty ? 'Ingresa tu dirección' : null,
       ),
       const SizedBox(height: AppDimens.paddingMedium),
-      GestureDetector(
-        onTap: () async {
-          final picked = await showDatePicker(
-            context: context,
-            initialDate: DateTime(2000),
-            firstDate: DateTime(1900),
-            lastDate: DateTime.now(),
-          );
-          if (picked != null) setState(() => _birthDate = picked);
-        },
-        child: AbsorbPointer(
-          child: TextFormField(
-            decoration: _input("Fecha de nacimiento", Icons.cake),
-            controller: TextEditingController(
-              text: _birthDate == null
-                ? ''
-                : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
-            ),
-            validator: (v) => _birthDate == null ? "Selecciona tu fecha de nacimiento" : null,
-            style: AppTextStyles.formFieldText,
-          ),
-        ),
-      ),
-      const SizedBox(height: 20),
-      _submitButton("Registrar"),
+      _fieldBirthDate(),
+      if (showSubmit) ...[
+        const SizedBox(height: 20),
+        _habitusDataCheckbox(),
+        const SizedBox(height: 16),
+        _submitButton('Registrar'),
+      ] else
+        const SizedBox(height: 20),
     ],
   );
 
   // =======================================================
-  // FORMULARIO PEDIATRA — STEP 1
+  // FORMULARIO PEDIATRA — STEP 2: datos profesionales
   // =======================================================
 
-  Widget _stepP1() {
-    return Column(
-      children: [
-        _fieldName(),
-        _fieldEmail(),
-        _fieldPassword(),
-        _fieldPhone(),
-        TextFormField(
-          controller: _addressController,
-          style: AppTextStyles.formFieldText,
-          decoration: _input("Dirección", Icons.map_outlined),
-          validator: (v) => v!.isEmpty ? "Ingresa tu dirección" : null,
-        ),
-        const SizedBox(height: AppDimens.paddingMedium),
-        GestureDetector(
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime(2000),
-              firstDate: DateTime(1900),
-              lastDate: DateTime.now(),
-            );
-            if (picked != null) setState(() => _birthDate = picked);
-          },
-          child: AbsorbPointer(
-            child: TextFormField(
-              decoration: _input("Fecha de nacimiento", Icons.cake),
-              controller: TextEditingController(
-                text: _birthDate == null
-                  ? ''
-                  : '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
-              ),
-              validator: (v) => _birthDate == null ? "Selecciona tu fecha de nacimiento" : null,
-              style: AppTextStyles.formFieldText,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  // =======================================================
-  // FORMULARIO PEDIATRA — STEP 2
-  // =======================================================
-
-  Widget _pediatricianFields() {
+  Widget _stepProfessionalData() {
     return Column(
       children: [
         DropdownButtonFormField<String>(
           value: _selectedCountry,
           isExpanded: true,
-          decoration: _input("País", Icons.flag).copyWith(
-            hintText: "País",
+          decoration: _input('País', Icons.flag).copyWith(
+            hintText: 'País',
             hintStyle: const TextStyle(
               color: AppColors.textWhite,
               fontSize: 16,
@@ -368,22 +302,19 @@ class _RegisterPageState extends State<RegisterPage> {
           dropdownColor: const Color.fromARGB(19, 245, 243, 243),
           style: AppTextStyles.formFieldText,
           items: _countries
-              .map(
-                (c) => DropdownMenuItem(
-                  value: c,
-                  child: Text(c, style: AppTextStyles.formFieldText),
-                ),
-              )
+              .map((c) => DropdownMenuItem(
+                    value: c,
+                    child: Text(c, style: AppTextStyles.formFieldText),
+                  ))
               .toList(),
           onChanged: (v) => setState(() => _selectedCountry = v),
-          validator: (v) =>
-              v == null || v.isEmpty ? 'Selecciona un país' : null,
+          validator: (v) => v == null || v.isEmpty ? 'Selecciona un país' : null,
         ),
         const SizedBox(height: AppDimens.paddingMedium),
         TextFormField(
-          controller: _addressController,
+          controller: _workAddressController,
           style: AppTextStyles.formFieldText,
-          decoration: _input("Dirección de trabajo", Icons.map_outlined),
+          decoration: _input('Dirección de trabajo', Icons.map_outlined),
         ),
         const SizedBox(height: AppDimens.paddingMedium),
         GestureDetector(
@@ -398,13 +329,13 @@ class _RegisterPageState extends State<RegisterPage> {
           },
           child: AbsorbPointer(
             child: TextFormField(
-              decoration: _input("Fecha de inicio de labores", Icons.date_range),
+              decoration: _input('Fecha de inicio de labores', Icons.date_range),
               controller: TextEditingController(
                 text: _startDate == null
                   ? ''
                   : '${_startDate!.day.toString().padLeft(2, '0')}/${_startDate!.month.toString().padLeft(2, '0')}/${_startDate!.year}',
               ),
-              validator: (v) => _startDate == null ? "Selecciona la fecha de inicio" : null,
+              validator: (v) => _startDate == null ? 'Selecciona la fecha de inicio' : null,
               style: AppTextStyles.formFieldText,
             ),
           ),
@@ -414,51 +345,61 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // =======================================================
-  // FORMULARIO PEDIATRA — STEP 3
+  // FORMULARIO PEDIATRA — STEP 3: documentos
   // =======================================================
 
-  Widget _stepP3() {
-    final List<_DocumentoItem> documentos = [
+  Widget _stepDocuments() {
+    final String? identidadLabel = _documentoIdentidadFrenteUrl != null &&
+            _documentoIdentidadReversoUrl != null
+        ? 'Ambos lados subidos'
+        : _documentoIdentidadFrenteUrl != null
+            ? 'Frente subido'
+            : _documentoIdentidadReversoUrl != null
+                ? 'Reverso subido'
+                : null;
+
+    final documentos = [
       _DocumentoItem(
-        nombre: "Póliza de responsabilidad única",
+        nombre: 'Póliza de responsabilidad única',
         url: _polizaUrl,
         obligatorio: false,
         onUpload: () async {
-          await _pickAndUploadPoliza(
+          await _pickAndUploadDocument(
             context,
+            'polizas',
             (url) => setState(() => _polizaUrl = url),
           );
         },
         onDelete: () => setState(() => _polizaUrl = null),
       ),
       _DocumentoItem(
-        nombre: "Tarjeta profesional",
+        nombre: 'Tarjeta profesional',
         url: _tarjetaProfesionalUrl,
         obligatorio: false,
         onUpload: () async {
-          await _pickAndUploadTarjetaProfesional(
+          await _pickAndUploadDocument(
             context,
+            'tarjetas_profesional',
             (url) => setState(() => _tarjetaProfesionalUrl = url),
           );
         },
         onDelete: () => setState(() => _tarjetaProfesionalUrl = null),
       ),
       _DocumentoItem(
-        nombre: "Documento de identidad (frente y reverso)",
-        url: (_documentoIdentidadFrenteUrl != null || _documentoIdentidadReversoUrl != null)
-            ? (_documentoIdentidadFrenteUrl != null && _documentoIdentidadReversoUrl != null
-                ? "Ambos lados subidos"
-                : _documentoIdentidadFrenteUrl != null
-                    ? "Frente subido"
-                    : "Reverso subido")
-            : null,
+        nombre: 'Documento de identidad (frente y reverso)',
+        url: identidadLabel,
         obligatorio: false,
         onUpload: () async {
           final hasPermission = await _requestFileAndCameraPermissions();
           if (!hasPermission) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permiso denegado para acceder a archivos o cámara.')));
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Permiso denegado para acceder a archivos o cámara.')),
+              );
+            }
             return;
           }
+          if (!mounted) return;
           final option = await showModalBottomSheet<String>(
             context: context,
             builder: (ctx) => Column(
@@ -483,15 +424,17 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           );
           if (option == null) return;
-          final picker = ImagePicker();
-          XFile? image;
+
           if (option == 'frente' || option == 'reverso') {
-            image = await picker.pickImage(source: ImageSource.camera);
+            final image = await ImagePicker().pickImage(source: ImageSource.camera);
             if (image == null) return;
             final bytes = await image.readAsBytes();
-            final maxSize = 5 * 1024 * 1024;
-            if (bytes.length > maxSize) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La imagen supera el límite de 5MB')));
+            if (bytes.length > 5 * 1024 * 1024) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('La imagen supera el límite de 5MB')),
+                );
+              }
               return;
             }
             final storageRef = FirebaseStorage.instance.ref().child(
@@ -499,32 +442,44 @@ class _RegisterPageState extends State<RegisterPage> {
             );
             await storageRef.putData(bytes);
             final url = await storageRef.getDownloadURL();
-            setState(() {
-              if (option == 'frente') _documentoIdentidadFrenteUrl = url;
-              else _documentoIdentidadReversoUrl = url;
-            });
-          } else if (option == 'archivo') {
+            if (mounted) {
+              setState(() {
+                if (option == 'frente') {
+                  _documentoIdentidadFrenteUrl = url;
+                } else {
+                  _documentoIdentidadReversoUrl = url;
+                }
+              });
+            }
+          } else {
             final picked = await pickDocument();
             if (picked == null) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No seleccionaste ningún documento.')));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No seleccionaste ningún documento.')),
+                );
+              }
               return;
             }
-            final fileName = picked.name;
-            final fileBytes = picked.bytes;
-            final maxSize = 5 * 1024 * 1024;
-            if (fileBytes.length > maxSize) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El archivo supera el límite de 5MB o es inválido')));
+            if (picked.bytes.length > 5 * 1024 * 1024) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('El archivo supera el límite de 5MB o es inválido')),
+                );
+              }
               return;
             }
             final storageRef = FirebaseStorage.instance.ref().child(
-              'documentos_identidad/${DateTime.now().millisecondsSinceEpoch}_archivo_$fileName',
+              'documentos_identidad/${DateTime.now().millisecondsSinceEpoch}_archivo_${picked.name}',
             );
-            await storageRef.putData(fileBytes);
+            await storageRef.putData(picked.bytes);
             final url = await storageRef.getDownloadURL();
-            setState(() {
-              _documentoIdentidadFrenteUrl = url;
-              _documentoIdentidadReversoUrl = url;
-            });
+            if (mounted) {
+              setState(() {
+                _documentoIdentidadFrenteUrl = url;
+                _documentoIdentidadReversoUrl = url;
+              });
+            }
           }
         },
         onDelete: () => setState(() {
@@ -537,23 +492,19 @@ class _RegisterPageState extends State<RegisterPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle("Documentos requeridos"),
+        _sectionTitle('Documentos requeridos'),
         const SizedBox(height: 12),
         ...documentos.map(
           (doc) => ListTile(
             leading: Checkbox(
-              value: doc.nombre == "Documento de identidad (frente y reverso)"
-                  ? (_documentoIdentidadFrenteUrl != null || _documentoIdentidadReversoUrl != null)
-                  : doc.url != null,
+              value: doc.url != null,
               onChanged: (doc.url == null && doc.onUpload != null)
                   ? (v) async => await doc.onUpload!.call()
                   : null,
               activeColor: AppColors.primary,
             ),
             title: Text(
-              doc.nombre == "Documento de identidad (frente y reverso)"
-                  ? (doc.url ?? doc.nombre)
-                  : doc.nombre,
+              doc.url ?? doc.nombre,
               style: AppTextStyles.formFieldText.copyWith(fontSize: 11),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -564,81 +515,64 @@ class _RegisterPageState extends State<RegisterPage> {
                     onPressed: doc.onDelete,
                   )
                 : IconButton(
-                    icon: const Icon(
-                      Icons.upload_file,
-                      color: AppColors.inputIcon,
-                    ),
+                    icon: const Icon(Icons.upload_file, color: AppColors.inputIcon),
                     onPressed: doc.onUpload,
                   ),
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Checkbox(
-              value: _dataTreatmentAccepted,
-              onChanged: (v) {
-                setState(() {
-                  _dataTreatmentAccepted = v ?? false;
-                });
-              },
-              activeColor: AppColors.primary,
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text:
-                              'Autorizo el tratamiento de mis datos personales conforme a la ',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white,
-                            fontFamily: 'Montserrat',
-                          ),
+        _habitusDataCheckbox(),
+      ],
+    );
+  }
+
+  // =======================================================
+  // HABEAS DATA
+  // =======================================================
+
+  Widget _habitusDataCheckbox() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: _dataTreatmentAccepted,
+          onChanged: (v) => setState(() => _dataTreatmentAccepted = v ?? false),
+          activeColor: AppColors.primary,
+        ),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'Autorizo el tratamiento de mis datos personales conforme a la ',
+                  style: TextStyle(fontSize: 13, color: Colors.white, fontFamily: 'Montserrat'),
+                ),
+                WidgetSpan(
+                  child: GestureDetector(
+                    onTap: () => _launchUrlCustom(
+                      Uri.parse('https://www.sic.gov.co/sites/default/files/files/Politica_de_Tratamiento_de_Datos_Personales.pdf'),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.only(left: 2.0),
+                      child: Text(
+                        'política de tratamiento de datos',
+                        style: TextStyle(
+                          color: Colors.yellow,
+                          decoration: TextDecoration.underline,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
                         ),
-                        WidgetSpan(
-                          child: GestureDetector(
-                            onTap: () {
-                              launchUrlCustom(
-                                Uri.parse(
-                                  'https://www.sic.gov.co/sites/default/files/files/Politica_de_Tratamiento_de_Datos_Personales.pdf',
-                                ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 2.0),
-                              child: Text(
-                                'política de tratamiento de datos',
-                                style: TextStyle(
-                                  color: Colors.yellow,
-                                  decoration: TextDecoration.underline,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextSpan(
-                          text: '.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white,
-                            fontFamily: 'Montserrat',
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const TextSpan(
+                  text: '.',
+                  style: TextStyle(fontSize: 13, color: Colors.white, fontFamily: 'Montserrat'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ],
     );
@@ -659,12 +593,6 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
     );
   }
-
-  // =======================================================
-  // SUBIDA DE DOCUMENTOS
-  // =======================================================
-
-  // Método eliminado por no ser referenciado
 
   // =======================================================
   // BOTÓN DE ENVÍO
@@ -688,10 +616,7 @@ class _RegisterPageState extends State<RegisterPage> {
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 2,
-                ),
+                child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
               )
             : Text(text, style: AppTextStyles.buttonText),
       ),
@@ -699,17 +624,13 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   // =======================================================
-  // ENVÍO FINAL CORREGIDO
+  // ENVÍO FINAL
   // =======================================================
 
   Future<void> _submit() async {
-    if (_step == 2 && !_dataTreatmentAccepted) {
+    if (!_dataTreatmentAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Debes autorizar el tratamiento de datos para continuar.',
-          ),
-        ),
+        const SnackBar(content: Text('Debes autorizar el tratamiento de datos para continuar.')),
       );
       return;
     }
@@ -717,12 +638,10 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_accountType == AccountType.pediatrician) {
       if (_polizaUrl == null ||
           _tarjetaProfesionalUrl == null ||
-          _documentoIdentidadUrl == null) {
+          (_documentoIdentidadFrenteUrl == null && _documentoIdentidadReversoUrl == null)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Puedes continuar sin subir todos los documentos, pero tu cuenta quedará pendiente de revisión.',
-            ),
+            content: Text('Puedes continuar sin subir todos los documentos, pero tu cuenta quedará pendiente de revisión.'),
             duration: Duration(seconds: 4),
           ),
         );
@@ -733,40 +652,28 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      final userType = _accountType == AccountType.pediatrician
-          ? 'pediatra'
-          : 'usuario';
-      final estado = _accountType == AccountType.pediatrician
-          ? 'pendiente'
-          : 'habilitado';
-
-      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await ref.read(authControllerProvider).register(
+        RegisterData(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          phone: _phoneController.text.trim(),
+          address: _addressController.text.trim(),
+          birthDate: _birthDate!,
+          isPediatrician: _accountType == AccountType.pediatrician,
+          country: _selectedCountry,
+          workAddress: _workAddressController.text.trim().isEmpty
+              ? null
+              : _workAddressController.text.trim(),
+          startDate: _startDate,
+          polizaUrl: _polizaUrl,
+          tarjetaProfesionalUrl: _tarjetaProfesionalUrl,
+          documentoIdentidadFrenteUrl: _documentoIdentidadFrenteUrl,
+          documentoIdentidadReversoUrl: _documentoIdentidadReversoUrl,
+        ),
       );
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(cred.user!.uid)
-          .set({
-            'name': _nameController.text.trim(),
-            'email': _emailController.text.trim(),
-            'phone': _phoneController.text.trim(),
-            'type': userType,
-            'estado': estado,
-            if (_accountType == AccountType.pediatrician) ...{
-              'country': _selectedCountry,
-              'address': _addressController.text.trim(),
-              'birthDate': _birthDate != null ? _birthDate!.toIso8601String() : null,
-              'startDate': _startDate != null ? _startDate!.toIso8601String() : null,
-              'polizaUrl': _polizaUrl,
-              'tarjetaProfesionalUrl': _tarjetaProfesionalUrl,
-              'documentoIdentidadFrenteUrl': _documentoIdentidadFrenteUrl,
-              'documentoIdentidadReversoUrl': _documentoIdentidadReversoUrl,
-              'documentos': _documents,
-            },
-          });
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -779,22 +686,19 @@ class _RegisterPageState extends State<RegisterPage> {
       );
 
       await Future.delayed(const Duration(seconds: 2));
-
       if (!mounted) return;
 
-      // Cerrar sesión para evitar redirección automática al dashboard
-      await FirebaseAuth.instance.signOut();
-
+      setState(() => _isLoading = false);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (route) => false,
       );
-      setState(() => _isLoading = false);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     }
   }
 
@@ -809,7 +713,7 @@ class _RegisterPageState extends State<RegisterPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        title: const Text("Registro"),
+        title: const Text('Registro'),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -824,9 +728,7 @@ class _RegisterPageState extends State<RegisterPage> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppDimens.paddingXLarge),
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: mq.width > 500 ? 500 : mq.width,
-                ),
+                constraints: BoxConstraints(maxWidth: mq.width > 500 ? 500 : mq.width),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -849,60 +751,39 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 18),
 
-                      // ========== SELECCIÓN TIPO DE CUENTA ==========
                       ToggleButtons(
-                        borderRadius: BorderRadius.circular(
-                          AppDimens.borderRadiusXLarge,
-                        ),
+                        borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
                         borderColor: AppColors.primary,
                         selectedBorderColor: AppColors.primary,
                         fillColor: AppColors.primary,
                         selectedColor: Colors.white,
-                        color: AppColors.primary,
-                        constraints: const BoxConstraints(
-                          minWidth: 120,
-                          minHeight: 40,
-                        ),
+                        color: Colors.white70,
+                        constraints: const BoxConstraints(minWidth: 120, minHeight: 40),
                         isSelected: [
                           _accountType == AccountType.user,
                           _accountType == AccountType.pediatrician,
                         ],
                         onPressed: (index) {
                           setState(() {
-                            _accountType = index == 0
-                                ? AccountType.user
-                                : AccountType.pediatrician;
+                            _accountType = index == 0 ? AccountType.user : AccountType.pediatrician;
                             _step = 0;
                           });
                         },
                         children: const [
-                          Text(
-                            'Usuario',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Montserrat',
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            'Pediatra',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Montserrat',
-                              fontSize: 16,
-                            ),
-                          ),
+                          Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', fontSize: 16)),
+                          Text('Pediatra', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', fontSize: 16)),
                         ],
                       ),
 
                       const SizedBox(height: 18),
 
-                      if (_accountType == AccountType.user) ...[_stepUser()],
+                      if (_accountType == AccountType.user)
+                        _stepPersonalData(showSubmit: true),
 
                       if (_accountType == AccountType.pediatrician) ...[
-                        if (_step == 0) _stepP1(),
-                        if (_step == 1) _pediatricianFields(),
-                        if (_step == 2) _stepP3(),
+                        if (_step == 0) _stepPersonalData(),
+                        if (_step == 1) _stepProfessionalData(),
+                        if (_step == 2) _stepDocuments(),
                         const SizedBox(height: 20),
 
                         Row(
@@ -911,50 +792,32 @@ class _RegisterPageState extends State<RegisterPage> {
                             if (_step > 0)
                               ElevatedButton.icon(
                                 onPressed: _prevStep,
-                                icon: const Icon(
-                                  Icons.arrow_back,
-                                  color: AppColors.primary,
-                                ),
+                                icon: const Icon(Icons.arrow_back, color: AppColors.primary),
                                 label: const Text(
-                                  "Anterior",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Montserrat',
-                                    color: AppColors.primary,
-                                  ),
+                                  'Anterior',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', color: AppColors.primary),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.textWhite,
                                   elevation: AppDimens.elevationMedium,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppDimens.borderRadiusXLarge,
-                                    ),
+                                    borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
                                   ),
                                 ),
                               ),
                             if (_step < 2)
                               ElevatedButton.icon(
                                 onPressed: _nextStep,
-                                icon: const Icon(
-                                  Icons.arrow_forward,
-                                  color: AppColors.primary,
-                                ),
+                                icon: const Icon(Icons.arrow_forward, color: AppColors.primary),
                                 label: const Text(
-                                  "Siguiente",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Montserrat',
-                                    color: AppColors.primary,
-                                  ),
+                                  'Siguiente',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Montserrat', color: AppColors.primary),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.textWhite,
                                   elevation: AppDimens.elevationMedium,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppDimens.borderRadiusXLarge,
-                                    ),
+                                    borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
                                   ),
                                 ),
                               ),
@@ -968,24 +831,16 @@ class _RegisterPageState extends State<RegisterPage> {
                                     backgroundColor: AppColors.textWhite,
                                     elevation: AppDimens.elevationMedium,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppDimens.borderRadiusXLarge,
-                                      ),
+                                      borderRadius: BorderRadius.circular(AppDimens.borderRadiusXLarge),
                                     ),
                                   ),
                                   child: _isLoading
                                       ? const SizedBox(
                                           width: 20,
                                           height: 20,
-                                          child: CircularProgressIndicator(
-                                            color: AppColors.primary,
-                                            strokeWidth: 2,
-                                          ),
+                                          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
                                         )
-                                      : Text(
-                                          "Guardar",
-                                          style: AppTextStyles.buttonText,
-                                        ),
+                                      : Text('Guardar', style: AppTextStyles.buttonText),
                                 ),
                               ),
                           ],

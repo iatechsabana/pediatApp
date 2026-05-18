@@ -199,58 +199,148 @@ class SpecialistListPage extends StatelessWidget {
                                         // Obtener hijos del usuario desde family_cores
                                         final familyDoc = await FirebaseFirestore.instance.collection('family_cores').doc(user.uid).get();
                                         final children = (familyDoc.data()?['children'] ?? []) as List<dynamic>;
+                                        if (!context.mounted) return;
                                         if (children.isEmpty) {
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('No tienes hijos registrados.')),
+                                            const SnackBar(
+                                              content: Text('Debes registrar un hijo en "Núcleo familiar" antes de solicitar una consulta.'),
+                                              duration: Duration(seconds: 4),
+                                            ),
                                           );
                                           return;
                                         }
-                                        // Selección de hijo
+                                        // Selección de hijo con UI de tarjetas
                                         int selectedIndex = 0;
+                                        const avatarColors = [
+                                          Color(0xFF5C6BC0), Color(0xFF26A69A), Color(0xFF42A5F5),
+                                          Color(0xFFEF5350), Color(0xFFF57C00), Color(0xFF1ABC9C),
+                                        ];
                                         final confirm = await showDialog<Map<String, dynamic>>(
                                           context: context,
-                                          builder: (context) {
-                                            return StatefulBuilder(
-                                              builder: (context, setState) {
-                                                return AlertDialog(
-                                                  title: const Text('Selecciona el hijo para la videollamada'),
-                                                  content: Column(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      DropdownButton<int>(
-                                                        value: selectedIndex,
-                                                        items: List.generate(children.length, (idx) {
-                                                          final child = children[idx];
-                                                          return DropdownMenuItem<int>(
-                                                            value: idx,
-                                                            child: Text(child['name'] ?? 'Hijo ${idx + 1}'),
-                                                          );
-                                                        }),
-                                                        onChanged: (val) {
-                                                          setState(() => selectedIndex = val ?? 0);
-                                                        },
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () => Navigator.pop(context, null),
-                                                      child: const Text('Cancelar'),
-                                                    ),
-                                                    ElevatedButton(
-                                                      onPressed: () => Navigator.pop(context, {
-                                                        'child': children[selectedIndex],
-                                                      }),
-                                                      child: const Text('Solicitar'),
-                                                    ),
+                                          builder: (dlgCtx) => StatefulBuilder(
+                                            builder: (dlgCtx, setDlgState) {
+                                              return AlertDialog(
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                title: const Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text('¿Para cuál hijo es la consulta?',
+                                                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                                                    SizedBox(height: 4),
+                                                    Text('Selecciona al paciente',
+                                                        style: TextStyle(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.normal)),
                                                   ],
-                                                );
-                                              },
-                                            );
-                                          },
+                                                ),
+                                                content: SizedBox(
+                                                  width: double.maxFinite,
+                                                  child: ListView.separated(
+                                                    shrinkWrap: true,
+                                                    itemCount: children.length,
+                                                    separatorBuilder: (_, i) => const SizedBox(height: 8),
+                                                    itemBuilder: (_, idx) {
+                                                      final child = children[idx] as Map<String, dynamic>;
+                                                      final childName = (child['name'] as String?) ?? 'Hijo ${idx + 1}';
+                                                      final dob = (child['dob'] as String?) ?? '';
+                                                      final color = avatarColors[idx % avatarColors.length];
+                                                      final initial = childName.isNotEmpty ? childName[0].toUpperCase() : '?';
+                                                      final isSelected = selectedIndex == idx;
+
+                                                      // Calcular edad desde dob (dd/MM/yyyy)
+                                                      String age = '';
+                                                      if (dob.isNotEmpty) {
+                                                        try {
+                                                          final parts = dob.split('/');
+                                                          if (parts.length == 3) {
+                                                            final birth = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+                                                            final now = DateTime.now();
+                                                            int years = now.year - birth.year;
+                                                            if (now.month < birth.month || (now.month == birth.month && now.day < birth.day)) years--;
+                                                            if (years < 1) {
+                                                              int months = (now.year - birth.year) * 12 + now.month - birth.month;
+                                                              if (now.day < birth.day) months--;
+                                                              age = '$months ${months == 1 ? 'mes' : 'meses'}';
+                                                            } else {
+                                                              age = '$years ${years == 1 ? 'año' : 'años'}';
+                                                            }
+                                                          }
+                                                        } catch (_) {}
+                                                      }
+
+                                                      return GestureDetector(
+                                                        onTap: () => setDlgState(() => selectedIndex = idx),
+                                                        child: AnimatedContainer(
+                                                          duration: const Duration(milliseconds: 150),
+                                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                          decoration: BoxDecoration(
+                                                            color: isSelected ? color.withAlpha(25) : Colors.grey.shade50,
+                                                            borderRadius: BorderRadius.circular(14),
+                                                            border: Border.all(
+                                                              color: isSelected ? color : Colors.grey.shade200,
+                                                              width: isSelected ? 2 : 1,
+                                                            ),
+                                                          ),
+                                                          child: Row(
+                                                            children: [
+                                                              CircleAvatar(
+                                                                radius: 22,
+                                                                backgroundColor: color,
+                                                                child: Text(initial,
+                                                                    style: const TextStyle(
+                                                                        color: Colors.white,
+                                                                        fontWeight: FontWeight.bold,
+                                                                        fontSize: 16)),
+                                                              ),
+                                                              const SizedBox(width: 12),
+                                                              Expanded(
+                                                                child: Column(
+                                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                                  children: [
+                                                                    Text(childName,
+                                                                        style: TextStyle(
+                                                                          fontWeight: FontWeight.w700,
+                                                                          fontSize: 15,
+                                                                          color: isSelected ? color : Colors.black87,
+                                                                        )),
+                                                                    if (age.isNotEmpty)
+                                                                      Text(age,
+                                                                          style: const TextStyle(
+                                                                              fontSize: 12, color: Colors.black54)),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                              if (isSelected)
+                                                                Icon(Icons.check_circle, color: color, size: 22),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(dlgCtx, null),
+                                                    child: const Text('Cancelar'),
+                                                  ),
+                                                  ElevatedButton.icon(
+                                                    onPressed: () => Navigator.pop(dlgCtx, {'child': children[selectedIndex]}),
+                                                    icon: const Icon(Icons.video_call, size: 18),
+                                                    label: const Text('Solicitar consulta'),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: Colors.blue,
+                                                      foregroundColor: Colors.white,
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
                                         );
                                         if (confirm == null || confirm['child'] == null) return;
-                                        final selectedChild = confirm['child'];
+                                        final selectedChild = confirm['child'] as Map<String, dynamic>;
                                         // Generar un roomId único
                                         final roomId = 'room_${user.uid}_${toUserId}_${DateTime.now().millisecondsSinceEpoch}';
                                         // Crear registro de videollamada en Firestore
@@ -263,12 +353,13 @@ class SpecialistListPage extends StatelessWidget {
                                           'child': selectedChild,
                                         });
                                         // Crear notificación en Firestore para el médico
+                                        final childName = (selectedChild['name'] as String?) ?? 'un paciente';
                                         await FirebaseFirestore.instance.collection('notifications').add({
                                           'toUserId': toUserId,
                                           'fromUserId': user.uid,
                                           'type': 'videollamada',
                                           'title': 'Solicitud de videollamada',
-                                          'message': 'Tienes una nueva solicitud de videollamada de un paciente.',
+                                          'message': 'Nueva videollamada para atender a $childName.',
                                           'timestamp': FieldValue.serverTimestamp(),
                                           'userName': user.displayName ?? '',
                                           'videocallId': videocallDoc.id,

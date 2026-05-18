@@ -278,6 +278,7 @@ class _PediatricianNotificationsPageState
                             builder: (_) => VideoCallPage(
                               roomCode: roomId,
                               userName: user.displayName ?? 'Médico',
+                              videocallId: videocallId,
                             ),
                           ),
                         );
